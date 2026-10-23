@@ -1,0 +1,19 @@
+# lmfilament port of upstream samples/heightfield.cpp
+# A subdivided-quad stand-in for the heightfield mesh with the heightfield material. The height texture parameter is not in the schema yet.
+# Run from the repo root (asset paths are relative): lmscript examples/heightfield.lms
+# Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
+out = ARGV.len() > 0 ? ARGV[0] : "build/heightfield.dslb";
+mkdir("build");
+mkdir("build/materials");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material_file("third_party/filament/samples/materials/heightfield.mat");
+let s = fil.scene();
+s.add(fil.plane(2.0, 2.0), mat);
+s.camera(45.0, 0.0, 1.5, 2.5, 0.0, 0.0, 0.0);
+s.render_frames(1);
+end _dsl_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok heightfield");

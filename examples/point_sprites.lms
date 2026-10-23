@@ -1,0 +1,19 @@
+# lmfilament port of upstream samples/point_sprites.cpp
+# Compiles the pointSprites material used by the sample. Point primitives and the fade texture are not in the schema yet, so the scene holds only the skybox.
+# Run from the repo root (asset paths are relative): lmscript examples/point_sprites.lms
+# Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
+out = ARGV.len() > 0 ? ARGV[0] : "build/point_sprites.dslb";
+mkdir("build");
+mkdir("build/materials");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material_file("third_party/filament/samples/materials/pointSprites.mat");
+mat.save("build/pointSprites.filamat");
+let s = fil.scene();
+s.skybox(0.1, 0.125, 0.25);
+s.render_frames(1);
+end _dsl_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok point_sprites");

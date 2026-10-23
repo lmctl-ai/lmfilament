@@ -1,0 +1,27 @@
+# lmfilament port of upstream samples/material_sandbox.cpp
+# Compiles every sandbox*.mat variant (lit, cloth, subsurface, refraction, ...) and previews each on a sphere.
+# Run from the repo root (asset paths are relative): lmscript examples/material_sandbox.lms
+# Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
+out = ARGV.len() > 0 ? ARGV[0] : "build/material_sandbox.dslb";
+mkdir("build");
+mkdir("build/materials");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let s = fil.scene();
+s.directional_light(1.0, 1.0, 1.0, 100000.0, 0.7, -1.0, -0.8);
+s.camera(45.0, 0.0, 0.0, 8.0, 0.0, 0.0, 0.0);
+s.add_at(fil.sphere(0.5, 24), fil.material_file("third_party/filament/samples/materials/sandboxLit.mat"), -4.4, 0.0, 0.0);
+s.add_at(fil.sphere(0.5, 24), fil.material_file("third_party/filament/samples/materials/sandboxLitFade.mat"), -3.3, 0.0, 0.0);
+s.add_at(fil.sphere(0.5, 24), fil.material_file("third_party/filament/samples/materials/sandboxLitTransparent.mat"), -2.2, 0.0, 0.0);
+s.add_at(fil.sphere(0.5, 24), fil.material_file("third_party/filament/samples/materials/sandboxLitSolidRefraction.mat"), -1.1, 0.0, 0.0);
+s.add_at(fil.sphere(0.5, 24), fil.material_file("third_party/filament/samples/materials/sandboxLitThinRefraction.mat"), 0.0, 0.0, 0.0);
+s.add_at(fil.sphere(0.5, 24), fil.material_file("third_party/filament/samples/materials/sandboxCloth.mat"), 1.1, 0.0, 0.0);
+s.add_at(fil.sphere(0.5, 24), fil.material_file("third_party/filament/samples/materials/sandboxSubsurface.mat"), 2.2, 0.0, 0.0);
+s.add_at(fil.sphere(0.5, 24), fil.material_file("third_party/filament/samples/materials/sandboxSpecGloss.mat"), 3.3, 0.0, 0.0);
+s.add_at(fil.sphere(0.5, 24), fil.material_file("third_party/filament/samples/materials/sandboxUnlit.mat"), 4.4, 0.0, 0.0);
+s.render_frames(1);
+end _dsl_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok material_sandbox");

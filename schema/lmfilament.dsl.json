@@ -1,0 +1,286 @@
+{
+  "dsl.schema": 2,
+  "name": "lmfilament",
+  "types": {
+    "Filament": {
+      "methods": {
+        "version": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "material": [
+          {
+            "params": [
+              "string",
+              "string"
+            ],
+            "returns": "Material"
+          }
+        ],
+        "material_file": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Material"
+          }
+        ],
+        "box": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "sphere": [
+          {
+            "params": [
+              "float",
+              "int"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "plane": [
+          {
+            "params": [
+              "float",
+              "float"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "scene": [
+          {
+            "params": [],
+            "returns": "Scene"
+          }
+        ],
+        "triangle": [
+          {
+            "params": [],
+            "returns": "Mesh"
+          }
+        ],
+        "mesh_obj": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Mesh"
+          }
+        ]
+      }
+    },
+    "Material": {
+      "methods": {
+        "name": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "package_size": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "save": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "void"
+          }
+        ],
+        "set_float": [
+          {
+            "params": [
+              "string",
+              "float"
+            ],
+            "returns": "Material"
+          }
+        ],
+        "set_float3": [
+          {
+            "params": [
+              "string",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Material"
+          }
+        ],
+        "set_float4": [
+          {
+            "params": [
+              "string",
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Material"
+          }
+        ]
+      }
+    },
+    "Mesh": {
+      "methods": {
+        "vertex_count": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "triangle_count": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "compute_tangents": [
+          {
+            "params": [],
+            "returns": "Mesh"
+          }
+        ],
+        "has_tangents": [
+          {
+            "params": [],
+            "returns": "bool"
+          }
+        ],
+        "save_obj": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "void"
+          }
+        ],
+        "has_colors": [
+          {
+            "params": [],
+            "returns": "bool"
+          }
+        ]
+      }
+    },
+    "Scene": {
+      "methods": {
+        "add": [
+          {
+            "params": [
+              "Mesh",
+              "Material"
+            ],
+            "returns": "Scene"
+          }
+        ],
+        "sun": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Scene"
+          }
+        ],
+        "render_frames": [
+          {
+            "params": [
+              "int"
+            ],
+            "returns": "int"
+          }
+        ],
+        "renderable_count": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "light_count": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "add_at": [
+          {
+            "params": [
+              "Mesh",
+              "Material",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Scene"
+          }
+        ],
+        "skybox": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Scene"
+          }
+        ],
+        "camera": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Scene"
+          }
+        ],
+        "directional_light": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Scene"
+          }
+        ],
+        "point_light": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Scene"
+          }
+        ]
+      }
+    }
+  },
+  "functions": {},
+  "context": {
+    "fil": "Filament"
+  }
+}

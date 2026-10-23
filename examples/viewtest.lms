@@ -1,0 +1,20 @@
+# lmfilament port of upstream samples/viewtest.cpp
+# Triangle on a pure blue skybox (the upstream sample renders it through several views).
+# Run from the repo root (asset paths are relative): lmscript examples/viewtest.lms
+# Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
+out = ARGV.len() > 0 ? ARGV[0] : "build/viewtest.dslb";
+mkdir("build");
+mkdir("build/materials");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material_file("third_party/filament/samples/materials/bakedColor.mat");
+let s = fil.scene();
+s.skybox(0.0, 0.0, 1.0);
+s.camera(45.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0);
+s.add(fil.triangle(), mat);
+s.render_frames(3);
+end _dsl_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok viewtest");

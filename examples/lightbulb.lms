@@ -1,0 +1,29 @@
+# lmfilament port of upstream samples/lightbulb.cpp
+# A metal sphere lit by one sun and five colored point lights at the upstream positions, over a ground plane. The upstream spot lights are approximated by point lights.
+# Run from the repo root (asset paths are relative): lmscript examples/lightbulb.lms
+# Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
+out = ARGV.len() > 0 ? ARGV[0] : "build/lightbulb.dslb";
+mkdir("build");
+mkdir("build/materials");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material_file("third_party/filament/samples/materials/aiDefaultMat.mat");
+mat.set_float3("baseColor", 1.0, 1.0, 1.0);
+mat.set_float("roughness", 0.01);
+mat.set_float("metallic", 1.0);
+let s = fil.scene();
+s.add_at(fil.sphere(0.5, 32), mat, 0.0, 0.0, -3.0);
+s.add_at(fil.plane(10.0, 10.0), fil.material_file("third_party/filament/samples/materials/groundShadow.mat"), 0.0, -0.8, -3.0);
+s.directional_light(0.9551, 0.8276, 0.7678, 110000.0, 0.7, -1.0, -0.8);
+s.point_light(0.0, -0.2, -3.0, 1000.0, 10.0);
+s.point_light(0.6, 0.6, -3.2, 2000.0, 10.0);
+s.point_light(-0.6, 0.3, -3.2, 1000.0, 10.0);
+s.point_light(0.0, 1.5, -3.5, 1000.0, 10.0);
+s.point_light(0.0, 0.6, -3.2, 2000.0, 10.0);
+s.camera(45.0, 0.0, 0.0, 0.0, 0.0, 0.0, -3.0);
+s.render_frames(2);
+end _dsl_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok lightbulb");

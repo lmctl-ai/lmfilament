@@ -1,0 +1,22 @@
+# lmfilament port of upstream samples/shadowtest.cpp
+# A ground plane with the groundShadow material and a shadow-casting sun.
+# Run from the repo root (asset paths are relative): lmscript examples/shadowtest.lms
+# Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
+out = ARGV.len() > 0 ? ARGV[0] : "build/shadowtest.dslb";
+mkdir("build");
+mkdir("build/materials");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let ground = fil.material_file("third_party/filament/samples/materials/groundShadow.mat");
+let s = fil.scene();
+s.skybox(0.5, 0.75, 1.0);
+s.add_at(fil.plane(20.0, 20.0), ground, 0.0, -1.0, 0.0);
+s.add_at(fil.sphere(1.0, 24), fil.material_file("third_party/filament/samples/materials/sandboxLit.mat").set_float3("baseColor", 0.8, 0.2, 0.2), 0.0, 0.0, 0.0);
+s.directional_light(0.9551, 0.8276, 0.7678, 110000.0, 0.7, -1.0, -0.8);
+s.camera(45.0, 0.0, 2.0, 8.0, 0.0, 0.0, 0.0);
+s.render_frames(2);
+end _dsl_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok shadowtest");
