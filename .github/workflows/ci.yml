@@ -48,7 +48,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: toolchain (linux: clang 18 + static libc++)
+      - name: "toolchain (linux, clang 18 + static libc++)"
         if: runner.os == 'Linux' && env.ONLY_OK == 'true'
         run: |
           sudo apt-get update -qq
@@ -56,7 +56,7 @@ jobs:
           echo "CC=clang-18" >> "$GITHUB_ENV"
           echo "CXX=clang++-18" >> "$GITHUB_ENV"
 
-      - name: toolchain (macos: Apple clang + ninja)
+      - name: "toolchain (macos, Apple clang + ninja)"
         if: runner.os == 'macOS' && env.ONLY_OK == 'true'
         run: |
           brew install ninja
