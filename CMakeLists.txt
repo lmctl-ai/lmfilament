@@ -56,7 +56,7 @@ target_include_directories(lmfilament SYSTEM PRIVATE
 target_compile_options(lmfilament PRIVATE -Wall -Wextra)
 if(APPLE)
   # ld64 rescans archives; no -static / --gc-sections; libc++ is the system one.
-  target_link_libraries(lmfilament PRIVATE ${FIL_LIBS})
+  target_link_libraries(lmfilament PRIVATE ${FIL_LIBS} "-framework Foundation")
   target_link_options(lmfilament PRIVATE -Wl,-dead_strip)
 else()
   target_link_libraries(lmfilament PRIVATE -Wl,--start-group ${FIL_LIBS} -Wl,--end-group c++ c++abi pthread dl m)
