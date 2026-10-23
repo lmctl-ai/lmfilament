@@ -15,7 +15,7 @@ Both scripts honour `LLVM=/path/to/llvm`.
 
 ```sh
 git clone --depth 1 https://github.com/google/filament.git third_party/filament   # at the commit in filament.lock
-scripts/build-filament.sh      # ~10 min on 4 cores; static libs into build/filament-build, install in build/filament-install
+scripts/build-filament.sh      # ~10 min on 4 cores; static libs in build/filament-build
 scripts/build.sh               # configures + links build/host/lmfilament (static)
 ./test.sh                      # signatures, static link, every example, a negative test
 ```

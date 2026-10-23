@@ -23,13 +23,40 @@ end _dsl_
 
 Real: `.mat` -> `.filamat` compilation (all upstream sample materials), Filament engine/scene/camera/light/
 renderable/material-instance objects, procedural meshes, OBJ import/export, tangent frames.
-Not real: **pixels**. A fully static binary cannot load a GPU driver, so Filament runs on its noop backend and
-`render_frames` drives the render loop without output. See [durable-memory/](durable-memory/).
+Not real: **Filament pixels**. A fully static binary cannot load a GPU driver, so Filament runs on its noop backend
+and `render_frames` drives the render loop without output. The pictures below come from lmfilament's own small CPU
+preview rasterizer (`Scene.render_png`): Lambert shading from the scene's lights, `baseColor` from the material
+parameters, unlit vertex colors, no textures, no shadows. It is a preview, not Filament's PBR renderer.
+See [durable-memory/](durable-memory/).
 
 ## Examples
 
-[`examples/`](examples) ports 14 upstream samples (`hellotriangle`, `hellopbr`, `suzanne`, `lightbulb`, ...).
-[`durable-memory/06-upstream-sample-map.md`](durable-memory/06-upstream-sample-map.md) says what each keeps.
+Each picture is produced by a self-contained `.lms` port of an upstream Filament C++ sample in
+[`examples/`](examples) (materials are inlined, so the `lmctl autorun` command in each caption runs from any
+directory and writes `images/<name>.png`). `examples/render-all.sh` regenerates all of them; the two Suzanne examples
+read the OBJ from a Filament checkout (`scripts/sync-filament.sh`).
+[`durable-memory/06-upstream-sample-map.md`](durable-memory/06-upstream-sample-map.md) says what each port keeps.
+`strobecolor`, `point_sprites` and `compile-sample-materials` produce no picture.
+
+| Vertex-colored triangle | Suzanne, PBR `aiDefaultMat` | Suzanne, `texturedLit` |
+| --- | --- | --- |
+| <img src="docs/images/hellotriangle.png" width="290"> | <img src="docs/images/hellopbr.png" width="290"> | <img src="docs/images/suzanne.png" width="290"> |
+| Upstream hellotriangle: unlit `bakedColor` material<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/hellotriangle.lms` | Metallic 1, roughness 0.4, sun light (needs a clone for the OBJ)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/hellopbr.lms` | Same scene with the textured material (textures not wired yet; needs a clone)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/suzanne.lms` |
+
+| Depth testing | Vertex buffer layout | Blue skybox view |
+| --- | --- | --- |
+| <img src="docs/images/depthtesting.png" width="290"> | <img src="docs/images/vbotest.png" width="290"> | <img src="docs/images/viewtest.png" width="290"> |
+| Two triangles at different depths; the nearer one wins<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/depthtesting.lms` | Position + packed ubyte4 color, `bakedColor`<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/vbotest.lms` | Triangle on a pure blue skybox<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/viewtest.lms` |
+
+| Sun + five point lights | Ground plane and sun | Material sandbox |
+| --- | --- | --- |
+| <img src="docs/images/lightbulb.png" width="290"> | <img src="docs/images/shadowtest.png" width="290"> | <img src="docs/images/material_sandbox.png" width="290"> |
+| Metal sphere over a ground plane at the upstream light positions<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/lightbulb.lms` | `groundShadow` plane and a lit sphere on a sky-blue skybox<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/shadowtest.lms` | Nine sandbox materials on spheres (lit, fade, transparent, refraction, cloth, ...)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/material_sandbox.lms` |
+
+| Textured quad | Heightfield plane |   |
+| --- | --- | --- |
+| <img src="docs/images/texturedquad.png" width="290"> | <img src="docs/images/heightfield.png" width="290"> |   |
+| `bakedTexture` quad (texture parameter not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texturedquad.lms` | `heightfield` material on a quad (height texture not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/heightfield.lms` |   |
 
 ## Build
 

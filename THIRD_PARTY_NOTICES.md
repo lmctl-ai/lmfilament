@@ -7,6 +7,10 @@ lmfilament-authored source is licensed under the MIT License; see `LICENSE`. Thi
 `cpp/dslvm.hpp`, which originates from the MIT-licensed cpp-dsl-sdk. MIT is compatible with every component
 below, and with gnuplot's GPL-compatible terms as used by the sibling lmplot project.
 
+lmcad (MIT)
+-----------
+`cpp/deflate.hpp` and the PNG chunk writer in `cpp/preview.cpp` are adapted from lmcad (Lattice Systems LLC, MIT).
+
 Google Filament 1.78.1 (pinned by `filament.lock`)
 --------------------------------------------------
 The executable statically links the Filament engine, filamat (material compiler), filament-matp, geometry,

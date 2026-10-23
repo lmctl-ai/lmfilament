@@ -1,6 +1,6 @@
 # lmfilament port of upstream samples/materials/*.mat
 # Compiles every upstream sample material to build/materials/NAME.filamat (all 28 files).
-# Run from the repo root (asset paths are relative): lmscript examples/compile-sample-materials.lms
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/compile-sample-materials.lms
 # Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
 out = ARGV.len() > 0 ? ARGV[0] : "build/compile-sample-materials.dslb";
 mkdir("build");

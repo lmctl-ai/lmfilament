@@ -1,7 +1,7 @@
 # Open items
 
-1. **Pixels.** No rendering output exists. Options: a CPU rasterizer over `Mesh` + material parameters
-   (as `../lmcad/cpp/render.cpp`), or a software GL path. Needs a decision before it is worth building.
+1. **Real Filament pixels.** Only the CPU preview exists (`render_png`). Filament-rendered output would need a
+   software GL/Vulkan path (e.g. OSMesa or SwiftShader) linked statically, which is a separate decision.
 2. **Textures.** `Material.set_texture`, KTX/PNG loading and sampler parameters would unlock the textured
    parts of `suzanne`, `texturedquad`, `heightfield`, `point_sprites`. The `libimage`/`ktxreader`/`stb`
    archives are already built.

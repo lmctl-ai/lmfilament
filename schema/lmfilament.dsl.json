@@ -275,6 +275,16 @@
             ],
             "returns": "Scene"
           }
+        ],
+        "render_png": [
+          {
+            "params": [
+              "string",
+              "int",
+              "int"
+            ],
+            "returns": "void"
+          }
         ]
       }
     }

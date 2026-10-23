@@ -1,5 +1,6 @@
 #include "dslvm.hpp"
 #include "mesh.hpp"
+#include "preview.hpp"
 #include "schema_embedded.hpp"
 #include <backend/DriverEnums.h>
 #include <filament/Camera.h>
@@ -60,6 +61,7 @@ struct SceneObj {
   std::vector<utils::Entity> entities;
   std::vector<VertexBuffer*> vbs; std::vector<IndexBuffer*> ibs; std::vector<filament::Material*> materials;
   size_t renderables = 0, lights = 0;
+  lmfilament::PreviewScene preview;
   SceneObj() {
     engine = Engine::Builder().backend(backend::Backend::NOOP).build();
     if (!engine) throw dslvm::Error("cannot create Filament engine");
@@ -249,6 +251,11 @@ void register_host(dslvm::Registry& r, Host& h) {
         .build(*s->engine, e);
     auto& tcm = s->engine->getTransformManager();
     tcm.create(e); tcm.setTransform(tcm.getInstance(e), math::mat4f::translation(math::float3{x, y, z}));
+    {
+      lmfilament::PreviewItem item; item.mesh = mesh; item.translation = {x, y, z};
+      for (auto& [name, v] : mat->params) if ((name == "baseColor" || name == "color") && v.size() >= 3) item.base_color = {v[0], v[1], v[2]};
+      s->preview.items.push_back(std::move(item));
+    }
     s->scene->addEntity(e); s->entities.push_back(e); s->renderables++;
     return Value::object("Scene", p);
   };
@@ -262,6 +269,7 @@ void register_host(dslvm::Registry& r, Host& h) {
     if (s->skybox) { s->scene->setSkybox(nullptr); s->engine->destroy(s->skybox); }
     s->skybox = Skybox::Builder().color({a[0].f, a[1].f, a[2].f, 1.0}).build(*s->engine);
     s->scene->setSkybox(s->skybox);
+    s->preview.sky = {float(a[0].f), float(a[1].f), float(a[2].f)};
     return Value::object("Scene", p);
   });
   checked_method(r, "Scene", "camera", {"float", "float", "float", "float", "float", "float", "float"}, "Scene", [](void* p, Args& a) {
@@ -272,6 +280,7 @@ void register_host(dslvm::Registry& r, Host& h) {
     if (length(eye - target) == 0) throw dslvm::Error("camera eye and target must differ");
     s->camera->setProjection(a[0].f, 1.0, 0.1, 1000.0, Camera::Fov::VERTICAL);
     s->camera->lookAt(eye, target, math::double3{0, 1, 0});
+    s->preview.fov_degrees = float(a[0].f); s->preview.eye = {eye.x, eye.y, eye.z}; s->preview.target = {target.x, target.y, target.z};
     return Value::object("Scene", p);
   });
   checked_method(r, "Scene", "directional_light", {"float", "float", "float", "float", "float", "float", "float"}, "Scene", [](void* p, Args& a) {
@@ -282,6 +291,7 @@ void register_host(dslvm::Registry& r, Host& h) {
     if (length(d) == 0) throw dslvm::Error("light direction must be nonzero");
     utils::Entity e = utils::EntityManager::get().create();
     LightManager::Builder(LightManager::Type::DIRECTIONAL).color({float(a[0].f), float(a[1].f), float(a[2].f)}).intensity(float(a[3].f)).direction(normalize(d)).build(*s->engine, e);
+    s->preview.lights.push_back({true, {float(a[0].f), float(a[1].f), float(a[2].f)}, {d.x, d.y, d.z}, float(a[3].f), 0});
     s->scene->addEntity(e); s->entities.push_back(e); s->lights++;
     return Value::object("Scene", p);
   });
@@ -292,6 +302,7 @@ void register_host(dslvm::Registry& r, Host& h) {
     if (!(a[4].f > 0)) throw dslvm::Error("light falloff radius must be positive");
     utils::Entity e = utils::EntityManager::get().create();
     LightManager::Builder(LightManager::Type::POINT).position({float(a[0].f), float(a[1].f), float(a[2].f)}).intensity(float(a[3].f)).falloff(float(a[4].f)).build(*s->engine, e);
+    s->preview.lights.push_back({false, {1, 1, 1}, {float(a[0].f), float(a[1].f), float(a[2].f)}, float(a[3].f), float(a[4].f)});
     s->scene->addEntity(e); s->entities.push_back(e); s->lights++;
     return Value::object("Scene", p);
   });
@@ -300,6 +311,7 @@ void register_host(dslvm::Registry& r, Host& h) {
     if (!(a[0].f >= 0)) throw dslvm::Error("sun intensity must not be negative");
     utils::Entity e = utils::EntityManager::get().create();
     LightManager::Builder(LightManager::Type::SUN).color({1, 1, 1}).intensity(static_cast<float>(a[0].f)).direction({0, -1, 0}).build(*s->engine, e);
+    s->preview.lights.push_back({true, {1, 1, 1}, {0, -1, 0}, float(a[0].f), 0});
     s->scene->addEntity(e); s->entities.push_back(e); s->lights++;
     return Value::object("Scene", p);
   });
@@ -312,6 +324,11 @@ void register_host(dslvm::Registry& r, Host& h) {
     }
     s->engine->flushAndWait();
     return Value::integer(drawn);
+  });
+  checked_method(r, "Scene", "render_png", {"string", "int", "int"}, "void", [](void* p, Args& a) {
+    if (a[1].i < 1 || a[2].i < 1 || a[1].i > 4096 || a[2].i > 4096) throw dslvm::Error("image dimensions must be between 1 and 4096");
+    lmfilament::render_png(self<SceneObj>(p)->preview, static_cast<int>(a[1].i), static_cast<int>(a[2].i), a[0].s);
+    return Value::none();
   });
   checked_method(r, "Scene", "renderable_count", {}, "int", [](void* p, Args&) { return Value::integer(static_cast<int64_t>(self<SceneObj>(p)->renderables)); });
   checked_method(r, "Scene", "light_count", {}, "int", [](void* p, Args&) { return Value::integer(static_cast<int64_t>(self<SceneObj>(p)->lights)); });

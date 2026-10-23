@@ -1,17 +1,19 @@
 # lmfilament port of upstream samples/texturedquad.cpp
 # A quad with the bakedTexture material. The albedo texture parameter is not in the schema yet.
-# Run from the repo root (asset paths are relative): lmscript examples/texturedquad.lms
-# Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texturedquad.lms
+# Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/texturedquad.png).
 out = ARGV.len() > 0 ? ARGV[0] : "build/texturedquad.dslb";
 mkdir("build");
 mkdir("build/materials");
+mkdir("images");
 p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
-let mat = fil.material_file("third_party/filament/samples/materials/bakedTexture.mat");
+let mat = fil.material("bakedTexture", "material {\n    name : BakedTexture,\n    parameters : [\n        {\n            type : sampler2d,\n            name : albedo\n        }\n    ],\n    requires : [\n        uv0\n    ],\n    shadingModel : unlit,\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = texture(materialParams_albedo, getUV0()).rgb;\n    }\n}\n");
 let s = fil.scene();
 s.skybox(0.1, 0.125, 0.25);
 s.add(fil.plane(2.0, 2.0), mat);
 s.camera(45.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0);
 s.render_frames(1);
+s.render_png("images/texturedquad.png", 800, 600);
 end _dsl_
 savedsl(p, out);
 r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);

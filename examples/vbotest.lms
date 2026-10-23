@@ -1,17 +1,19 @@
 # lmfilament port of upstream samples/vbotest.cpp
 # Vertex buffer layout test: interleaved position + packed ubyte4 color, here the shared triangle mesh with bakedColor.
-# Run from the repo root (asset paths are relative): lmscript examples/vbotest.lms
-# Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/vbotest.lms
+# Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/vbotest.png).
 out = ARGV.len() > 0 ? ARGV[0] : "build/vbotest.dslb";
 mkdir("build");
 mkdir("build/materials");
+mkdir("images");
 p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
-let mat = fil.material_file("third_party/filament/samples/materials/bakedColor.mat");
+let mat = fil.material("bakedColor", "material {\n    name : BakedColor,\n    requires : [\n        color\n    ],\n    shadingModel : unlit,\n    culling : none,\n    featureLevel : 0\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor = getColor();\n    }\n}\n");
 let tri = fil.triangle();
 let s = fil.scene();
 s.camera(45.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0);
 s.add(tri, mat);
 s.render_frames(1);
+s.render_png("images/vbotest.png", 800, 600);
 end _dsl_
 savedsl(p, out);
 r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);

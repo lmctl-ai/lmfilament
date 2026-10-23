@@ -1,6 +1,6 @@
 # lmfilament port of upstream samples/strobecolor.cpp
 # An empty scene with only a skybox color; the upstream sample animates the color each frame.
-# Run from the repo root (asset paths are relative): lmscript examples/strobecolor.lms
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/strobecolor.lms
 # Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
 out = ARGV.len() > 0 ? ARGV[0] : "build/strobecolor.dslb";
 mkdir("build");

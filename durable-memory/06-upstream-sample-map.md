@@ -19,3 +19,7 @@
 
 Each example's header comment states what is omitted. Every example prints `ok NAME` on success;
 `test.sh` requires that line.
+
+Pictures: `examples/render-all.sh` runs every example (each writes `images/NAME.png` via `Scene.render_png`, the CPU
+preview) and copies them to `docs/images/` for the README. Materials are inlined into the `.lms` files so the
+raw-URL `lmctl autorun` commands work from any directory; only the Suzanne examples need the Filament checkout.

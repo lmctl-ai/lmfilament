@@ -23,6 +23,10 @@ for f in examples/*.lms; do
   echo "$out" | grep -q "^ok " || { echo "$out" >&2; fail "$f printed no ok line"; }
   ok "$f"
 done
+for n in hellotriangle hellopbr lightbulb; do
+  [ -s "images/$n.png" ] || fail "images/$n.png missing"
+  [ "$(head -c 4 "images/$n.png" | tail -c 3)" = PNG ] || fail "images/$n.png is not a PNG"
+done; ok "examples wrote PNG previews"
 # A bad material must fail cleanly (exit 3, JSON error), not crash.
 bad="$(mktemp -d)"; trap 'rm -rf "$bad"' EXIT
 cat > "$bad/bad.lms" <<LMS
