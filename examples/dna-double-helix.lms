@@ -1,0 +1,75 @@
+# B-DNA built from its textbook numbers (one scene unit = 1 nm): 10.5 base pairs per turn (34.3 degrees of twist per pair),
+# 0.338 nm rise, phosphate backbone at radius 0.89 nm. The two backbones sit 144 degrees apart around the axis rather than 180,
+# which opens a wide major groove and a narrow minor groove. 28 base pairs, axis along x.
+# Base colours: A green, T red, G yellow, C blue. Ported from lmblender examples/dna-double-helix.lms.
+out = ARGV.len() > 0 ? ARGV[0] : "build/dna-double-helix.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("aiDefaultMat", "material {\n    name : AssimpDefaultMat,\n    shadingModel : lit,\n    parameters : [\n        {\n            type : float3,\n            name : baseColor\n        },\n        {\n            type : float,\n            name : metallic\n        },\n        {\n            type : float,\n            name : roughness\n        },\n        {\n            type : float,\n            name : reflectance\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = materialParams.baseColor;\n        material.metallic = materialParams.metallic;\n        material.roughness = materialParams.roughness;\n        material.reflectance = materialParams.reflectance;\n    }\n}\n");
+mat.set_float("metallic", 0.0);
+mat.set_float("roughness", 0.35);
+let scn = fil.scene();
+scn.skybox(0.03, 0.035, 0.05);
+let pairs = 28;
+let rise = 0.338;
+let twist = 34.3 * 3.14159265 / 180.0;
+let groove = 144.0 * 3.14159265 / 180.0;
+let radius = 0.89;
+let half = float(pairs - 1) * rise * 0.5;
+let lift = 1.6;
+let steps = (pairs - 1) * 4;
+let px1 = 0.0; let py1 = 0.0; let pz1 = 0.0;
+let px2 = 0.0; let py2 = 0.0; let pz2 = 0.0;
+for (s in range(0, steps + 1)) {
+  let t = float(s) / 4.0;
+  let x = t * rise - half;
+  let a = t * twist;
+  let y1 = lift + radius * sin(a);
+  let z1 = 0.0 - radius * cos(a);
+  let y2 = lift + radius * sin(a + groove);
+  let z2 = 0.0 - radius * cos(a + groove);
+  if (s > 0) {
+    mat.set_float3("baseColor", 0.92, 0.90, 0.86);
+    scn.add(fil.tube_between(px1, py1, pz1, x, y1, z1, 0.11), mat);
+    mat.set_float3("baseColor", 0.55, 0.60, 0.70);
+    scn.add(fil.tube_between(px2, py2, pz2, x, y2, z2, 0.11), mat);
+  }
+  px1 = x; py1 = y1; pz1 = z1;
+  px2 = x; py2 = y2; pz2 = z2;
+}
+for (i in range(0, pairs)) {
+  let x = float(i) * rise - half;
+  let a = float(i) * twist;
+  let y1 = lift + radius * sin(a);
+  let z1 = 0.0 - radius * cos(a);
+  let y2 = lift + radius * sin(a + groove);
+  let z2 = 0.0 - radius * cos(a + groove);
+  let ym = (y1 + y2) * 0.5;
+  let zm = (z1 + z2) * 0.5;
+  mat.set_float3("baseColor", 0.92, 0.90, 0.86);
+  scn.add_at(fil.sphere(0.17, 24), mat, x, y1, z1);
+  mat.set_float3("baseColor", 0.55, 0.60, 0.70);
+  scn.add_at(fil.sphere(0.17, 24), mat, x, y2, z2);
+  let code = (i * 7 + i * i * 3 + 1) - 4 * int(float(i * 7 + i * i * 3 + 1) / 4.0);
+  if (code == 0) { mat.set_float3("baseColor", 0.20, 0.72, 0.30); }
+  if (code == 1) { mat.set_float3("baseColor", 0.85, 0.16, 0.14); }
+  if (code == 2) { mat.set_float3("baseColor", 0.95, 0.66, 0.10); }
+  if (code == 3) { mat.set_float3("baseColor", 0.15, 0.36, 0.90); }
+  scn.add(fil.tube_between(x, y1, z1, x, ym, zm, 0.075), mat);
+  if (code == 0) { mat.set_float3("baseColor", 0.85, 0.16, 0.14); }
+  if (code == 1) { mat.set_float3("baseColor", 0.20, 0.72, 0.30); }
+  if (code == 2) { mat.set_float3("baseColor", 0.15, 0.36, 0.90); }
+  if (code == 3) { mat.set_float3("baseColor", 0.95, 0.66, 0.10); }
+  scn.add(fil.tube_between(x, ym, zm, x, y2, z2, 0.075), mat);
+}
+scn.directional_light(1.0, 1.0, 1.0, 110000.0, -0.3, -0.6, -0.7);
+scn.camera(31.0, 0.0, 6.2, 11.0, 0.0, 1.35, 0.0);
+scn.render_frames(2);
+scn.render_png("images/dna-double-helix.png", 900, 500);
+end _dsl_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok dna-double-helix");

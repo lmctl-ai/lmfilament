@@ -219,6 +219,14 @@ void register_host(dslvm::Registry& r, Host& h) {
     auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_capsule(float(a[0].f), float(a[1].f), int(a[2].i)); return h.hold(h.meshes, "Mesh", std::move(m)); });
   checked_method(r, "Filament", "icosphere", {"float", "int"}, "Mesh", [&h](void*, Args& a) { positive(a[0].f, "icosphere radius");
     auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_icosphere(float(a[0].f), int(a[1].i)); return h.hold(h.meshes, "Mesh", std::move(m)); });
+  checked_method(r, "Filament", "tube_between", {"float", "float", "float", "float", "float", "float", "float"}, "Mesh", [&h](void*, Args& a) {
+    for (int i = 0; i < 6; i++) if (!std::isfinite(a[i].f)) throw dslvm::Error("tube_between argument must be finite");
+    positive(a[6].f, "tube radius");
+    const float p0[3] = {float(a[0].f), float(a[1].f), float(a[2].f)}, p1[3] = {float(a[3].f), float(a[4].f), float(a[5].f)};
+    auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_tube(p0, p1, float(a[6].f)); return h.hold(h.meshes, "Mesh", std::move(m)); });
+  checked_method(r, "Filament", "ring", {"float", "float", "int"}, "Mesh", [&h](void*, Args& a) {
+    positive(a[0].f, "ring inner radius"); positive(a[1].f, "ring outer radius");
+    auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_ring(float(a[0].f), float(a[1].f), int(a[2].i)); return h.hold(h.meshes, "Mesh", std::move(m)); });
   checked_method(r, "Filament", "text", {"string", "float"}, "Mesh", [&h](void*, Args& a) { positive(a[1].f, "text height");
     if (a[0].s.empty() || a[0].s.size() > 256) throw dslvm::Error("text must be 1 to 256 characters");
     auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_text(a[0].s, float(a[1].f)); return h.hold(h.meshes, "Mesh", std::move(m)); });

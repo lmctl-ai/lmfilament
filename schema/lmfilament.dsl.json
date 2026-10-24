@@ -122,6 +122,30 @@
             ],
             "returns": "Mesh"
           }
+        ],
+        "tube_between": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "ring": [
+          {
+            "params": [
+              "float",
+              "float",
+              "int"
+            ],
+            "returns": "Mesh"
+          }
         ]
       }
     },

@@ -182,6 +182,60 @@ Mesh make_capsule(float r, float length, int s) {
   revolve(m, segs, s);
   return m;
 }
+Mesh make_tube(const float p0[3], const float p1[3], float radius) {
+  const float d[3] = {p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]};
+  const float len = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+  if (len == 0) throw std::runtime_error("tube endpoints must differ");
+  Mesh m = make_cylinder(radius, len, 24);
+  const float dir[3] = {d[0] / len, d[1] / len, d[2] / len};
+  // Rodrigues rotation taking +Y to dir: axis = Y x dir = (dir.z, 0, -dir.x), cos = dir.y.
+  const float c = dir[1], ax = dir[2], az = -dir[0], s = std::sqrt(ax * ax + az * az);
+  float R[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+  if (s > 1e-6f) {
+    const float x = ax / s, z = az / s, k = 1 - c;   // unit axis (x, 0, z)
+    const float R2[9] = {c + x * x * k, -z * s, x * z * k,
+                         z * s, c, -x * s,
+                         x * z * k, x * s, c + z * z * k};
+    std::copy(R2, R2 + 9, R);
+  } else if (c < 0) {
+    const float R2[9] = {1, 0, 0, 0, -1, 0, 0, 0, -1};
+    std::copy(R2, R2 + 9, R);
+  }
+  const float mid[3] = {(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2};
+  auto xf = [&](std::vector<float>& v, bool translate) {
+    for (size_t i = 0; i + 2 < v.size(); i += 3) {
+      const float x = v[i], y = v[i + 1], z = v[i + 2];
+      v[i] = R[0] * x + R[1] * y + R[2] * z + (translate ? mid[0] : 0);
+      v[i + 1] = R[3] * x + R[4] * y + R[5] * z + (translate ? mid[1] : 0);
+      v[i + 2] = R[6] * x + R[7] * y + R[8] * z + (translate ? mid[2] : 0);
+    }
+  };
+  xf(m.positions, true); xf(m.normals, false);
+  return m;
+}
+Mesh make_ring(float inner, float outer, int segments) {
+  check_segments(segments);
+  if (!(outer > inner) || inner <= 0) throw std::runtime_error("ring needs 0 < inner < outer");
+  Mesh m;
+  for (int side = 0; side < 2; side++) {
+    const uint32_t base = uint32_t(m.vertex_count());
+    const float ny = side ? -1.f : 1.f;
+    for (int k = 0; k <= segments; k++) {
+      const float a = 2 * float(M_PI) * float(k) / segments, c = std::cos(a), s = std::sin(a);
+      for (float r : {inner, outer}) {
+        m.positions.insert(m.positions.end(), {r * c, 0.f, r * s});
+        m.normals.insert(m.normals.end(), {0.f, ny, 0.f});
+        m.uvs.insert(m.uvs.end(), {float(k) / segments, r == inner ? 0.f : 1.f});
+      }
+    }
+    for (int k = 0; k < segments; k++) {
+      const uint32_t i = base + 2 * k;
+      if (side == 0) m.indices.insert(m.indices.end(), {i, i + 1, i + 2, i + 2, i + 1, i + 3});
+      else m.indices.insert(m.indices.end(), {i, i + 2, i + 1, i + 2, i + 3, i + 1});
+    }
+  }
+  return m;
+}
 Mesh make_icosphere(float radius, int subdivisions) {
   if (subdivisions < 0 || subdivisions > 5) throw std::runtime_error("icosphere subdivisions must be between 0 and 5");
   const float t = (1 + std::sqrt(5.f)) / 2;

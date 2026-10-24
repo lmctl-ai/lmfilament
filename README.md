@@ -31,7 +31,7 @@ See [durable-memory/](durable-memory/).
 
 ## Examples
 
-Each picture is produced by a self-contained `.lms` port of an upstream Filament C++ sample or of a [Magnum Python example](https://doc.magnum.graphics/python/examples/) in
+Each picture is produced by a self-contained `.lms` port of an upstream Filament C++ sample of a [Magnum Python example](https://doc.magnum.graphics/python/examples/), or of an [lmblender](https://github.com/lmctl-ai/lmblender) / [lmcad](https://github.com/lmctl-ai/lmcad) scene in
 [`examples/`](examples) (materials are inlined, so the `lmctl autorun` command in each caption runs from any
 directory and writes `images/<name>.png`). `examples/render-all.sh` regenerates all of them; the two Suzanne examples
 read the OBJ from a Filament checkout (`scripts/sync-filament.sh`).
@@ -62,6 +62,21 @@ read the OBJ from a Filament checkout (`scripts/sync-filament.sh`).
 | --- | --- | --- |
 | <img src="docs/images/material_sandbox.png" width="290"> | <img src="docs/images/texturedquad.png" width="290"> | <img src="docs/images/heightfield.png" width="290"> |
 | Nine sandbox materials on spheres (lit, fade, transparent, refraction, cloth, ...)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/material_sandbox.lms` | `bakedTexture` quad (texture parameter not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texturedquad.lms` | `heightfield` material on a quad (height texture not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/heightfield.lms` |
+
+| Caffeine molecule | Water molecule | Buckminsterfullerene C60 |
+| --- | --- | --- |
+| <img src="docs/images/caffeine-molecule.png" width="290"> | <img src="docs/images/ball-stick.png" width="290"> | <img src="docs/images/buckyball.png" width="290"> |
+| Ball-and-stick, 24 atoms in CPK colours (from lmblender)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/caffeine-molecule.lms` | 104.5 degree H-O-H angle (from lmcad)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/ball-stick.lms` | 60 atoms from icosahedral symmetry, 90 bonds (from lmcad)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/buckyball.lms` |
+
+| B-DNA double helix | Cornell box | Saturn and its rings |
+| --- | --- | --- |
+| <img src="docs/images/dna-double-helix.png" width="290"> | <img src="docs/images/cornell-box.png" width="290"> | <img src="docs/images/saturn-rings.png" width="290"> |
+| 28 base pairs, 144 degree groove geometry (from lmblender)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/dna-double-helix.lms` | Red and green walls, two white blocks (from lmblender)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/cornell-box.lms` | Ring radii to scale, Cassini Division (from lmblender)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/saturn-rings.lms` |
+
+| Pratt truss footbridge |   |   |
+| --- | --- | --- |
+| <img src="docs/images/truss-bridge.png" width="290"> |   |   |
+| Method of joints: red tension, blue compression (from lmcad)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/truss-bridge.lms` |   |   |
 
 ## Build
 

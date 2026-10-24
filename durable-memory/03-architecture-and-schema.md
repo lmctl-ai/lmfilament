@@ -52,7 +52,7 @@ requires another attribute (e.g. `uv1`, `color` on a mesh without colors) is not
 
 ```
 Filament: version() material(name, source) material_file(path) box(x,y,z) sphere(r, segments)
-          plane(w, d) cylinder(r,h,seg) cone(r,h,seg) capsule(r,len,seg) icosphere(r,sub) text(s,h)
+          plane(w, d) cylinder(r,h,seg) cone(r,h,seg) capsule(r,len,seg) icosphere(r,sub) text(s,h) tube_between(x1,y1,z1,x2,y2,z2,r) ring(inner,outer,seg)
           triangle() mesh_obj(path) scene()
 Material: name() package_size() save(path) set_float(n,v) set_float3(n,x,y,z) set_float4(n,x,y,z,w)
 Mesh:     vertex_count() triangle_count() has_tangents() has_colors() compute_tangents() save_obj(path)

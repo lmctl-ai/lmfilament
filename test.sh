@@ -23,7 +23,7 @@ for f in examples/*.lms; do
   echo "$out" | grep -q "^ok " || { echo "$out" >&2; fail "$f printed no ok line"; }
   ok "$f"
 done
-for n in hellotriangle hellopbr lightbulb primitives primitives-scene-graph model-viewer text; do
+for n in hellotriangle hellopbr lightbulb primitives primitives-scene-graph model-viewer text caffeine-molecule ball-stick buckyball dna-double-helix cornell-box saturn-rings truss-bridge; do
   [ -s "images/$n.png" ] || fail "images/$n.png missing"
   [ "$(head -c 4 "images/$n.png" | tail -c 3)" = PNG ] || fail "images/$n.png is not a PNG"
 done; ok "examples wrote PNG previews"

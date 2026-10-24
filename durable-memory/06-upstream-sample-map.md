@@ -20,6 +20,13 @@
 | Magnum Python `Primitives, using a scene graph` | `primitives-scene-graph.lms` | nested nodes via TransformManager |
 | Magnum Python `Model viewer` | `model-viewer.lms` | robot from primitives under one node; no importer UI |
 | Magnum Python `Text` | `text.lms` | voxel 5x7 font instead of distance-field glyphs |
+| lmblender `caffeine-molecule` | `caffeine-molecule.lms` | atoms/bonds copied; tubes via `fil.tube_between` |
+| lmcad `ball-stick` | `ball-stick.lms` | water molecule |
+| lmcad `buckyball` | `buckyball.lms` | C60 logic copied verbatim; asserts dropped |
+| lmblender `dna-double-helix` | `dna-double-helix.lms` | strands as chains of tubes |
+| lmblender `cornell-box` | `cornell-box.lms` | no global illumination (preview shading only) |
+| lmblender `saturn-rings` | `saturn-rings.lms` | `fil.ring` bands, no planet shadow |
+| lmcad `truss-bridge` | `truss-bridge.lms` | 3D part only; member colour/radius from the closed-form forces |
 
 Each example's header comment states what is omitted. Every example prints `ok NAME` on success;
 `test.sh` requires that line.
