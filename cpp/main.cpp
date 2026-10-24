@@ -329,6 +329,13 @@ void register_host(dslvm::Registry& r, Host& h) {
   checked_method(r, "Part", "translate", {"float", "float", "float"}, "Part", [=](void* p, Args& a) { finite3(a, "translate"); part_xf(p).t = {a[0].f, a[1].f, a[2].f}; part_sync(p); return Value::object("Part", p); });
   checked_method(r, "Part", "rotate", {"float", "float", "float"}, "Part", [=](void* p, Args& a) { finite3(a, "rotate"); part_xf(p).r = {a[0].f, a[1].f, a[2].f}; part_sync(p); return Value::object("Part", p); });
   checked_method(r, "Part", "scale", {"float", "float", "float"}, "Part", [=](void* p, Args& a) { finite3(a, "scale"); for (int i = 0; i < 3; i++) positive(a[i].f, "scale"); part_xf(p).s = {a[0].f, a[1].f, a[2].f}; part_sync(p); return Value::object("Part", p); });
+  checked_method(r, "Part", "visible", {"bool"}, "Part", [](void* p, Args& a) {
+    auto* q = self<PartObj>(p); auto& item = q->scene->preview.items[q->item];
+    if (item.visible != a[0].b) {
+      if (a[0].b) q->scene->scene->addEntity(q->entity); else q->scene->scene->remove(q->entity);
+      item.visible = a[0].b;
+    }
+    return Value::object("Part", p); });
   checked_method(r, "Part", "parent", {"Node"}, "Part", [=](void* p, Args& a) {
     auto* q = self<PartObj>(p); auto* np = static_cast<NodeObj*>(a[0].obj);
     if (np->scene != q->scene) throw dslvm::Error("node parent must belong to the same scene");

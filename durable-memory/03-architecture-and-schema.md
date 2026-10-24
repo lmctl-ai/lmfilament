@@ -59,7 +59,7 @@ Mesh:     vertex_count() triangle_count() has_tangents() has_colors() compute_ta
 Scene:    add(mesh, mat) add_at(mesh, mat, x,y,z) add_part(mesh, mat)->Part node()->Node skybox(r,g,b) camera(fov,ex,ey,ez,tx,ty,tz)
           shadows(bool) sun(intensity) directional_light(r,g,b,intensity,dx,dy,dz) point_light(x,y,z,intensity,falloff)
           render_frames(n) render_png(path,w,h) renderable_count() light_count()
-Node/Part: translate(x,y,z) rotate(rx,ry,rz) scale(sx,sy,sz) parent(Node)   (Euler degrees, T*Rz*Ry*Rx*S)
+Node/Part: translate(x,y,z) rotate(rx,ry,rz) scale(sx,sy,sz) parent(Node)   Part also: visible(bool)   (Euler degrees, T*Rz*Ry*Rx*S)
 ```
 
 ## Scene graph

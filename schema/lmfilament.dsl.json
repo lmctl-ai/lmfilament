@@ -464,6 +464,14 @@
             ],
             "returns": "Part"
           }
+        ],
+        "visible": [
+          {
+            "params": [
+              "bool"
+            ],
+            "returns": "Part"
+          }
         ]
       }
     }

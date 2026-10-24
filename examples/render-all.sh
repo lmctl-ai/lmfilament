@@ -7,4 +7,7 @@ export PATH="$PWD/build/host:$PATH"
 mkdir -p images docs/images
 for f in examples/*.lms; do lmscript "$f" | grep -q '^ok ' || { echo "FAILED: $f" >&2; exit 1; }; done
 cp images/*.png docs/images/
+cp images/*.gif docs/images/ 2>/dev/null || true
+mkdir -p docs/videos
+cp images/*.mp4 docs/videos/ 2>/dev/null || true
 ls docs/images

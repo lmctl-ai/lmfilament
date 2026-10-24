@@ -1,0 +1,109 @@
+# Level 3: a hands-off Lead: one of the four 10 s clips (240 frames at 24 fps) on https://lmctl.com, from lmctl-ai/lmctl scripts/homepage/video.
+# A requirement and its acceptance checklist enter, the Lead assigns work and a reviewed result returns.
+# Writes images/level-3-hands-off-lead.png (frame 150), images/level-3-hands-off-lead.mp4 and images/level-3-hands-off-lead.gif (the last two need ffmpeg) and build/level-3-hands-off-lead/frame-N.png.
+out = ARGV.len() > 0 ? ARGV[0] : "build/level-3-hands-off-lead.dslb";
+mkdir("images");
+mkdir("build");
+mkdir("build/level-3-hands-off-lead");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("aiDefaultMat", "material {\n    name : AssimpDefaultMat,\n    shadingModel : lit,\n    parameters : [\n        {\n            type : float3,\n            name : baseColor\n        },\n        {\n            type : float,\n            name : metallic\n        },\n        {\n            type : float,\n            name : roughness\n        },\n        {\n            type : float,\n            name : reflectance\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = materialParams.baseColor;\n        material.metallic = materialParams.metallic;\n        material.roughness = materialParams.roughness;\n        material.reflectance = materialParams.reflectance;\n    }\n}\n");
+mat.set_float("metallic", 0.0);
+mat.set_float("roughness", 0.45);
+let scn = fil.scene();
+let frame_count = 240;
+let render_width = 480;
+let render_height = 270;
+
+# Shared look block: keep identical in all four homepage storyboards.
+scn.skybox(0.00271, 0.00440, 0.01002);
+scn.directional_light(1.0, 1.0, 1.0, 90200.0, -0.55, -1.0, -0.45);
+
+# A person defines the request. The checklist is a panel with three marks.
+mat.set_float3("baseColor", 0.14, 0.78, 0.68);
+let human_left = scn.add_part(fil.sphere(0.70, 32), mat).translate(-8.0, 0.9, 0.0);
+mat.set_float3("baseColor", 0.14, 0.78, 0.68);
+let human_left_body = scn.add_part(fil.cylinder(0.48, 1.4, 32), mat).translate(-8.0, -0.45, 0.0);
+mat.set_float3("baseColor", 0.98, 0.68, 0.20);
+let checklist = scn.add_part(fil.box(1.25, 1.45, 0.22), mat).translate(-6.1, 0.1, 0.2);
+mat.set_float3("baseColor", 0.18, 0.60, 0.94);
+let mark0 = scn.add_part(fil.box(0.58, 0.08, 0.08), mat).translate(-6.1, 0.5, 0.38);
+mat.set_float3("baseColor", 0.18, 0.60, 0.94);
+let mark1 = scn.add_part(fil.box(0.58, 0.08, 0.08), mat).translate(-6.1, 0.1, 0.38);
+mat.set_float3("baseColor", 0.18, 0.60, 0.94);
+let mark2 = scn.add_part(fil.box(0.58, 0.08, 0.08), mat).translate(-6.1, -0.3, 0.38);
+
+# The Lead coordinates two members in the middle of the workflow.
+mat.set_float3("baseColor", 0.98, 0.68, 0.20);
+let lead = scn.add_part(fil.sphere(0.76, 32), mat).translate(0.0, 0.4, 0.0);
+mat.set_float3("baseColor", 0.18, 0.60, 0.94);
+let coder = scn.add_part(fil.sphere(0.56, 32), mat).translate(-2.5, -1.5, 0.0);
+mat.set_float3("baseColor", 0.62, 0.45, 0.94);
+let reviewer = scn.add_part(fil.sphere(0.56, 32), mat).translate(2.5, -1.5, 0.0);
+mat.set_float3("baseColor", 0.18, 0.60, 0.94);
+let left_link = scn.add_part(fil.box(2.6, 0.08, 0.12), mat).translate(-1.3, -0.6, -0.7);
+mat.set_float3("baseColor", 0.62, 0.45, 0.94);
+let right_link = scn.add_part(fil.box(2.6, 0.08, 0.12), mat).translate(1.3, -0.6, -0.7);
+
+# A second person receives and reviews the finished result.
+mat.set_float3("baseColor", 0.14, 0.78, 0.68);
+let human_right = scn.add_part(fil.sphere(0.70, 32), mat).translate(8.0, 0.9, 0.0).visible(false);
+mat.set_float3("baseColor", 0.14, 0.78, 0.68);
+let human_right_body = scn.add_part(fil.cylinder(0.48, 1.4, 32), mat).translate(8.0, -0.45, 0.0).visible(false);
+mat.set_float3("baseColor", 0.28, 0.80, 0.48);
+let result = scn.add_part(fil.box(0.72, 0.72, 0.5), mat).translate(0.0, 0.4, 0.4).visible(false);
+mat.set_float3("baseColor", 0.96, 0.38, 0.28);
+let work_packet = scn.add_part(fil.sphere(0.24, 32), mat);
+mat.set_float3("baseColor", 0.98, 0.68, 0.20);
+let review_packet = scn.add_part(fil.sphere(0.24, 32), mat);
+let fov = 42.0;
+scn.camera(fov, 0.0, 0.0, 16.5, 0.0, 0.0, 0.0);
+for (frame in range(0, frame_count)) {
+  let t = float(frame) / float(frame_count - 1);
+  let request_t = ease(clamp(t / 0.32, 0.0, 1.0));
+  let checklist_x = lerp(-6.1, -2.6, request_t);
+  checklist.translate(checklist_x, 0.1, 0.2);
+  mark0.translate(checklist_x, 0.5, 0.38);
+  mark1.translate(checklist_x, 0.1, 0.38);
+  mark2.translate(checklist_x, -0.3, 0.38);
+  checklist.visible(t < 0.40); mark0.visible(t < 0.40); mark1.visible(t < 0.40); mark2.visible(t < 0.40);
+  human_left.visible(t < 0.40); human_left_body.visible(t < 0.40);
+  human_right.visible(t > 0.86); human_right_body.visible(t > 0.86);
+
+  let activity = 0.10 * sin(t * 18.8496);
+  coder.translate(-2.5, -1.5 + activity, 0.0);
+  reviewer.translate(2.5, -1.5 - activity, 0.0);
+  lead.translate(0.0, 0.4 + 0.06 * cos(t * 18.8496), 0.0);
+
+  let message_cycle = float(frame % 72) / 71.0;
+  if (message_cycle < 0.5) {
+    let message_t = ease(message_cycle * 2.0);
+    work_packet.translate(lerp(-2.5, 0.0, message_t), lerp(-1.5, 0.4, message_t), 0.75);
+    review_packet.translate(lerp(0.0, 2.5, message_t), lerp(0.4, -1.5, message_t), 0.78);
+  } else {
+    let message_t = ease((message_cycle - 0.5) * 2.0);
+    work_packet.translate(lerp(0.0, -2.5, message_t), lerp(0.4, -1.5, message_t), 0.75);
+    review_packet.translate(lerp(2.5, 0.0, message_t), lerp(-1.5, 0.4, message_t), 0.78);
+  }
+
+  let result_t = ease(clamp((t - 0.70) / 0.30, 0.0, 1.0));
+  result.translate(lerp(0.0, 6.7, result_t), 0.45, 0.65);
+  result.visible(t > 0.70);
+  scn.render_png("build/level-3-hands-off-lead/frame-" + str(frame) + ".png", render_width, render_height);
+  if (frame == 150) { scn.render_png("images/level-3-hands-off-lead.png", render_width, render_height); }
+}
+end _dsl_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok level-3-hands-off-lead");
+if (which("ffmpeg") != null) {
+  a = system ffmpeg -y -loglevel error -framerate 24 -i build/level-3-hands-off-lead/frame-%d.png -c:v libx264 -pix_fmt yuv420p -crf 22 images/level-3-hands-off-lead.mp4;
+  assert(a.code == 0);
+  b = system ffmpeg -y -loglevel error -framerate 24 -i build/level-3-hands-off-lead/frame-%d.png -vf "fps=12,scale=480:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse=dither=none" -loop 0 images/level-3-hands-off-lead.gif;
+  assert(b.code == 0);
+  println("wrote images/level-3-hands-off-lead.mp4 and images/level-3-hands-off-lead.gif");
+} else {
+  println("ffmpeg not found: skipped the MP4 and GIF (build/level-3-hands-off-lead/frame-*.png are the 240 frames)");
+}

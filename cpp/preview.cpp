@@ -84,6 +84,7 @@ void render_png(const PreviewScene& sc, int w, int h, const std::string& path) {
     std::vector<V3> lp; std::vector<uint32_t> li;
     double mnx = 1e30, mny = 1e30, mxx = -1e30, mxy = -1e30;
     for (const auto& item : sc.items) {
+      if (!item.visible) continue;
       const M4 Wm = world(sc.nodes, item.xf); const uint32_t base = uint32_t(lp.size());
       for (size_t i = 0; i < item.mesh.vertex_count(); i++) {
         const double x = item.mesh.positions[3 * i], y = item.mesh.positions[3 * i + 1], z = item.mesh.positions[3 * i + 2];
@@ -126,6 +127,7 @@ void render_png(const PreviewScene& sc, int w, int h, const std::string& path) {
   };
 
   for (const auto& item : sc.items) {
+    if (!item.visible) continue;
     const auto& m = item.mesh;
     const M4 WM = world(sc.nodes, item.xf);
     // Normals use the cofactor matrix of the upper 3x3 (inverse transpose up to scale), sign-corrected by the determinant.

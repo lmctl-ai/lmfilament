@@ -32,6 +32,7 @@
 | magnum-examples `cubemap` | `cubemap.lms` | six-face room + spheres; no reflections |
 | magnum-examples `bullet` | `bullet.lms` | closed-form ballistics, no rigid-body engine |
 | magnum-examples `fluidsimulation3d` / `fluidsimulation2d` | `fluidsimulation3d.lms`, `fluidsimulation2d.lms` | streamline visualisation, no solver |
+| lmctl.com homepage clips | `level-1-sessions.lms` ... `level-4-automation.lms` | ported from the lmcad storyboards; `Part.visible` toggles parts per frame; ffmpeg writes MP4 + GIF |
 
 Each example's header comment states what is omitted. Every example prints `ok NAME` on success;
 `test.sh` requires that line.
