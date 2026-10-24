@@ -16,6 +16,14 @@ struct Mesh {
 Mesh make_box(float x, float y, float z);
 Mesh make_sphere(float radius, int segments);
 Mesh make_plane(float width, float depth);
+// Solids of revolution around +Y, centered at the origin. `segments` >= 3 around the axis.
+Mesh make_cylinder(float radius, float height, int segments);
+Mesh make_cone(float radius, float height, int segments);      // apex at +height/2
+Mesh make_capsule(float radius, float length, int segments);   // `length` = straight part between the hemispheres
+Mesh make_icosphere(float radius, int subdivisions);            // 0..5
+// Voxel text from a built-in 5x7 font (A-Z, 0-9 and . , ! ? - : ' / + = ( ) _; lowercase is upper-cased, unknown -> '?').
+// Lower-left of the first glyph at the origin, in the XY plane, `height` tall, one pixel deep (+Z).
+Mesh make_text(const std::string& text, float height);
 // The upstream hellotriangle triangle: unit circle at 0/120/240 degrees, red/green/blue vertex colors.
 Mesh make_triangle();
 // Wavefront OBJ (v/vt/vn/f; polygons are fan-triangulated; one output vertex per face corner).

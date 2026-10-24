@@ -8,10 +8,13 @@
 #include <string>
 #include <vector>
 namespace lmfilament {
-struct PreviewItem { Mesh mesh; std::array<float, 3> translation{0, 0, 0}; std::array<float, 3> base_color{0.8f, 0.8f, 0.8f}; };
+// Local transform T*Rz*Ry*Rx*S (degrees), optionally parented to another node (index into PreviewScene::nodes).
+struct XForm { std::array<double, 3> t{0, 0, 0}, r{0, 0, 0}, s{1, 1, 1}; int parent = -1; };
+struct PreviewItem { Mesh mesh; XForm xf; std::array<float, 3> base_color{0.8f, 0.8f, 0.8f}; };
 struct PreviewLight { bool directional = true; std::array<float, 3> color{1, 1, 1}, vec{0, -1, 0}; float intensity = 0; float falloff = 0; };
 struct PreviewScene {
   std::vector<PreviewItem> items;
+  std::vector<XForm> nodes;
   std::vector<PreviewLight> lights;
   std::array<float, 3> sky{0.05f, 0.06f, 0.09f};
   float fov_degrees = 45;

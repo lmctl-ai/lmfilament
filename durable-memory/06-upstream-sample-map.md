@@ -16,6 +16,10 @@
 | `point_sprites.cpp` | `point_sprites.lms` | material only |
 | `material_sandbox.cpp` | `material_sandbox.lms` | all sandbox materials on spheres |
 | `materials/*.mat` | `compile-sample-materials.lms` | all 28 compile to `build/materials/*.filamat` |
+| Magnum Python `Primitives` | `primitives.lms` | all primitives the host builds; no mouse input |
+| Magnum Python `Primitives, using a scene graph` | `primitives-scene-graph.lms` | nested nodes via TransformManager |
+| Magnum Python `Model viewer` | `model-viewer.lms` | robot from primitives under one node; no importer UI |
+| Magnum Python `Text` | `text.lms` | voxel 5x7 font instead of distance-field glyphs |
 
 Each example's header comment states what is omitted. Every example prints `ok NAME` on success;
 `test.sh` requires that line.

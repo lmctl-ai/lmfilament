@@ -13,6 +13,21 @@ double dot(V3 a, V3 b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
 V3 cross(V3 a, V3 b) { return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]}; }
 V3 norm(V3 a) { double l = std::sqrt(dot(a, a)); if (l == 0) throw std::runtime_error("degenerate vector"); return {a[0] / l, a[1] / l, a[2] / l}; }
 
+using M4 = std::array<double, 16>;  // row-major
+M4 mul(const M4& a, const M4& b) { M4 r{}; for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) for (int k = 0; k < 4; k++) r[4 * i + j] += a[4 * i + k] * b[4 * k + j]; return r; }
+M4 local(const XForm& x) {
+  const double d = M_PI / 180, cx = std::cos(x.r[0] * d), sx = std::sin(x.r[0] * d), cy = std::cos(x.r[1] * d), sy = std::sin(x.r[1] * d), cz = std::cos(x.r[2] * d), sz = std::sin(x.r[2] * d);
+  const M4 T{1, 0, 0, x.t[0], 0, 1, 0, x.t[1], 0, 0, 1, x.t[2], 0, 0, 0, 1};
+  const M4 Rz{cz, -sz, 0, 0, sz, cz, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}, Ry{cy, 0, sy, 0, 0, 1, 0, 0, -sy, 0, cy, 0, 0, 0, 0, 1}, Rx{1, 0, 0, 0, 0, cx, -sx, 0, 0, sx, cx, 0, 0, 0, 0, 1};
+  const M4 S{x.s[0], 0, 0, 0, 0, x.s[1], 0, 0, 0, 0, x.s[2], 0, 0, 0, 0, 1};
+  return mul(T, mul(Rz, mul(Ry, mul(Rx, S))));
+}
+M4 world(const std::vector<XForm>& nodes, const XForm& x) {
+  M4 m = local(x);
+  int p = x.parent;
+  for (int guard = 0; p >= 0 && guard < 4096; guard++) { m = mul(local(nodes[size_t(p)]), m); p = nodes[size_t(p)].parent; }
+  return m;
+}
 struct Vtx { double x, y, z; V3 world, normal, color; bool has_color; };  // x,y,z in camera space
 
 Vtx lerp(const Vtx& a, const Vtx& b, double t) {
@@ -61,16 +76,27 @@ void render_png(const PreviewScene& sc, int w, int h, const std::string& path) {
 
   for (const auto& item : sc.items) {
     const auto& m = item.mesh;
+    const M4 WM = world(sc.nodes, item.xf);
+    // Normals use the cofactor matrix of the upper 3x3 (inverse transpose up to scale), sign-corrected by the determinant.
+    const double a = WM[0], b = WM[1], cc = WM[2], d = WM[4], e = WM[5], f = WM[6], g = WM[8], hh = WM[9], ii = WM[10];
+    const double C[9] = {e * ii - f * hh, f * g - d * ii, d * hh - e * g, cc * hh - b * ii, a * ii - cc * g, b * g - a * hh, b * f - cc * e, cc * d - a * f, a * e - b * d};
+    const double det = a * C[0] + b * C[1] + cc * C[2], dsign = det < 0 ? -1.0 : 1.0;
     for (size_t t = 0; t < m.triangle_count(); t++) {
       std::vector<Vtx> poly;
       for (int k = 0; k < 3; k++) {
         const uint32_t i = m.indices[3 * t + k];
-        V3 wp{m.positions[3 * i] + item.translation[0], m.positions[3 * i + 1] + item.translation[1], m.positions[3 * i + 2] + item.translation[2]};
+        const double lx = m.positions[3 * i], ly = m.positions[3 * i + 1], lz = m.positions[3 * i + 2];
+        V3 wp{WM[0] * lx + WM[1] * ly + WM[2] * lz + WM[3], WM[4] * lx + WM[5] * ly + WM[6] * lz + WM[7], WM[8] * lx + WM[9] * ly + WM[10] * lz + WM[11]};
         const V3 d = sub(wp, eye);
         Vtx v;
         v.x = dot(d, right); v.y = dot(d, up); v.z = dot(d, fwd);
         v.world = wp;
-        v.normal = {m.normals[3 * i], m.normals[3 * i + 1], m.normals[3 * i + 2]};
+        {
+          const double nx = m.normals[3 * i], ny = m.normals[3 * i + 1], nz = m.normals[3 * i + 2];
+          v.normal = {dsign * (C[0] * nx + C[1] * ny + C[2] * nz), dsign * (C[3] * nx + C[4] * ny + C[5] * nz), dsign * (C[6] * nx + C[7] * ny + C[8] * nz)};
+          const double l = std::sqrt(dot(v.normal, v.normal));
+          if (l > 0) for (double& q : v.normal) q /= l;
+        }
         v.has_color = !m.colors.empty();
         if (v.has_color) { const uint32_t c = m.colors[i]; v.color = {(c & 255) / 255.0, ((c >> 8) & 255) / 255.0, ((c >> 16) & 255) / 255.0}; }
         else v.color = {item.base_color[0], item.base_color[1], item.base_color[2]};

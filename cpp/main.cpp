@@ -62,6 +62,7 @@ struct SceneObj {
   std::vector<VertexBuffer*> vbs; std::vector<IndexBuffer*> ibs; std::vector<filament::Material*> materials;
   size_t renderables = 0, lights = 0;
   lmfilament::PreviewScene preview;
+  std::vector<utils::Entity> node_entities;
   SceneObj() {
     engine = Engine::Builder().backend(backend::Backend::NOOP).build();
     if (!engine) throw dslvm::Error("cannot create Filament engine");
@@ -85,7 +86,11 @@ struct SceneObj {
   }
 };
 
+struct PartObj { SceneObj* scene; utils::Entity entity; size_t item; };
+struct NodeObj { SceneObj* scene; utils::Entity entity; size_t node; };
 struct Host {
+  std::vector<std::unique_ptr<PartObj>> parts;
+  std::vector<std::unique_ptr<NodeObj>> nodes;
   std::vector<std::unique_ptr<MaterialObj>> materials;
   std::vector<std::unique_ptr<MeshObj>> meshes;
   std::vector<std::unique_ptr<SceneObj>> scenes;
@@ -120,6 +125,20 @@ std::unique_ptr<MaterialObj> compile_material(const std::string& name, std::stri
   } catch (...) { filamat::MaterialBuilder::shutdown(); throw; }
   filamat::MaterialBuilder::shutdown();
   return out;
+}
+
+math::mat4f local_matrix(const lmfilament::XForm& x) {
+  const float d = float(M_PI / 180);
+  return math::mat4f::translation(math::float3{float(x.t[0]), float(x.t[1]), float(x.t[2])}) *
+         math::mat4f::rotation(float(x.r[2]) * d, math::float3{0, 0, 1}) * math::mat4f::rotation(float(x.r[1]) * d, math::float3{0, 1, 0}) *
+         math::mat4f::rotation(float(x.r[0]) * d, math::float3{1, 0, 0}) * math::mat4f::scaling(math::float3{float(x.s[0]), float(x.s[1]), float(x.s[2])});
+}
+// The preview XForm is the source of truth; push it (and the parent link) into Filament's TransformManager.
+void sync(SceneObj* s, utils::Entity e, const lmfilament::XForm& x) {
+  auto& tcm = s->engine->getTransformManager();
+  auto inst = tcm.getInstance(e);
+  tcm.setTransform(inst, local_matrix(x));
+  tcm.setParent(inst, x.parent >= 0 ? tcm.getInstance(s->node_entities[size_t(x.parent)]) : decltype(inst){});
 }
 
 void checked_method(dslvm::Registry& r, const char* type, const char* name, std::vector<std::string> params, std::string returns, dslvm::Method cb) {
@@ -192,6 +211,17 @@ void register_host(dslvm::Registry& r, Host& h) {
   checked_method(r, "Material", "set_float", {"string", "float"}, "Material", set_param("set_float", 1));
   checked_method(r, "Material", "set_float3", {"string", "float", "float", "float"}, "Material", set_param("set_float3", 3));
   checked_method(r, "Material", "set_float4", {"string", "float", "float", "float", "float"}, "Material", set_param("set_float4", 4));
+  checked_method(r, "Filament", "cylinder", {"float", "float", "int"}, "Mesh", [&h](void*, Args& a) { positive(a[0].f, "cylinder radius"); positive(a[1].f, "cylinder height");
+    auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_cylinder(float(a[0].f), float(a[1].f), int(a[2].i)); return h.hold(h.meshes, "Mesh", std::move(m)); });
+  checked_method(r, "Filament", "cone", {"float", "float", "int"}, "Mesh", [&h](void*, Args& a) { positive(a[0].f, "cone radius"); positive(a[1].f, "cone height");
+    auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_cone(float(a[0].f), float(a[1].f), int(a[2].i)); return h.hold(h.meshes, "Mesh", std::move(m)); });
+  checked_method(r, "Filament", "capsule", {"float", "float", "int"}, "Mesh", [&h](void*, Args& a) { positive(a[0].f, "capsule radius"); positive(a[1].f, "capsule length");
+    auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_capsule(float(a[0].f), float(a[1].f), int(a[2].i)); return h.hold(h.meshes, "Mesh", std::move(m)); });
+  checked_method(r, "Filament", "icosphere", {"float", "int"}, "Mesh", [&h](void*, Args& a) { positive(a[0].f, "icosphere radius");
+    auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_icosphere(float(a[0].f), int(a[1].i)); return h.hold(h.meshes, "Mesh", std::move(m)); });
+  checked_method(r, "Filament", "text", {"string", "float"}, "Mesh", [&h](void*, Args& a) { positive(a[1].f, "text height");
+    if (a[0].s.empty() || a[0].s.size() > 256) throw dslvm::Error("text must be 1 to 256 characters");
+    auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_text(a[0].s, float(a[1].f)); return h.hold(h.meshes, "Mesh", std::move(m)); });
   checked_method(r, "Filament", "triangle", {}, "Mesh", [&h](void*, Args&) { auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_triangle(); return h.hold(h.meshes, "Mesh", std::move(m)); });
   checked_method(r, "Filament", "mesh_obj", {"string"}, "Mesh", [&h](void*, Args& a) { auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::load_obj(a[0].s); return h.hold(h.meshes, "Mesh", std::move(m)); });
   checked_method(r, "Mesh", "has_colors", {}, "bool", [](void* p, Args&) { return Value::boolean(!self<MeshObj>(p)->mesh.colors.empty()); });
@@ -204,7 +234,7 @@ void register_host(dslvm::Registry& r, Host& h) {
     lmfilament::write_obj(a[0].s, self<MeshObj>(p)->mesh); return Value::none();
   });
 
-  auto add_mesh = [](void* p, Args& a, float x, float y, float z) {
+  auto add_part = [&h](void* p, Args& a) -> PartObj* {
     auto* s = self<SceneObj>(p); auto& mesh = static_cast<MeshObj*>(a[0].obj)->mesh; auto* mat = static_cast<MaterialObj*>(a[1].obj);
     if (mesh.tangents.empty()) lmfilament::compute_tangents(mesh);
     const size_t vc = mesh.vertex_count();
@@ -250,19 +280,51 @@ void register_host(dslvm::Registry& r, Host& h) {
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
         .build(*s->engine, e);
     auto& tcm = s->engine->getTransformManager();
-    tcm.create(e); tcm.setTransform(tcm.getInstance(e), math::mat4f::translation(math::float3{x, y, z}));
+    tcm.create(e);
     {
-      lmfilament::PreviewItem item; item.mesh = mesh; item.translation = {x, y, z};
+      lmfilament::PreviewItem item; item.mesh = mesh;
       for (auto& [name, v] : mat->params) if ((name == "baseColor" || name == "color") && v.size() >= 3) item.base_color = {v[0], v[1], v[2]};
       s->preview.items.push_back(std::move(item));
     }
     s->scene->addEntity(e); s->entities.push_back(e); s->renderables++;
-    return Value::object("Scene", p);
+    h.parts.push_back(std::make_unique<PartObj>(PartObj{s, e, s->preview.items.size() - 1}));
+    return h.parts.back().get();
   };
-  checked_method(r, "Scene", "add", {"Mesh", "Material"}, "Scene", [add_mesh](void* p, Args& a) { return add_mesh(p, a, 0, 0, 0); });
-  checked_method(r, "Scene", "add_at", {"Mesh", "Material", "float", "float", "float"}, "Scene", [add_mesh](void* p, Args& a) {
+  checked_method(r, "Scene", "add", {"Mesh", "Material"}, "Scene", [add_part](void* p, Args& a) { add_part(p, a); return Value::object("Scene", p); });
+  checked_method(r, "Scene", "add_at", {"Mesh", "Material", "float", "float", "float"}, "Scene", [add_part](void* p, Args& a) {
     for (int i = 2; i < 5; i++) if (!std::isfinite(a[i].f)) throw dslvm::Error("position must be finite");
-    return add_mesh(p, a, float(a[2].f), float(a[3].f), float(a[4].f)); });
+    PartObj* part = add_part(p, a);
+    auto& xf = part->scene->preview.items[part->item].xf; xf.t = {a[2].f, a[3].f, a[4].f};
+    sync(part->scene, part->entity, xf);
+    return Value::object("Scene", p); });
+  checked_method(r, "Scene", "add_part", {"Mesh", "Material"}, "Part", [&h, add_part](void* p, Args& a) { return Value::object("Part", add_part(p, a)); });
+  checked_method(r, "Scene", "node", {}, "Node", [&h](void* p, Args&) {
+    auto* sc = self<SceneObj>(p);
+    utils::Entity e = utils::EntityManager::get().create();
+    sc->engine->getTransformManager().create(e);
+    sc->entities.push_back(e); sc->node_entities.push_back(e); sc->preview.nodes.emplace_back();
+    h.nodes.push_back(std::make_unique<NodeObj>(NodeObj{sc, e, sc->preview.nodes.size() - 1}));
+    return Value::object("Node", h.nodes.back().get()); });
+  auto finite3 = [](Args& a, const char* what) { for (int i = 0; i < 3; i++) if (!std::isfinite(a[i].f)) throw dslvm::Error(std::string(what) + " must be finite"); };
+  auto node_xf = [](void* p) -> lmfilament::XForm& { auto* n = self<NodeObj>(p); return n->scene->preview.nodes[n->node]; };
+  auto part_xf = [](void* p) -> lmfilament::XForm& { auto* q = self<PartObj>(p); return q->scene->preview.items[q->item].xf; };
+  auto node_sync = [node_xf](void* p) { auto* n = self<NodeObj>(p); sync(n->scene, n->entity, node_xf(p)); };
+  auto part_sync = [part_xf](void* p) { auto* q = self<PartObj>(p); sync(q->scene, q->entity, part_xf(p)); };
+  checked_method(r, "Node", "translate", {"float", "float", "float"}, "Node", [=](void* p, Args& a) { finite3(a, "translate"); node_xf(p).t = {a[0].f, a[1].f, a[2].f}; node_sync(p); return Value::object("Node", p); });
+  checked_method(r, "Node", "rotate", {"float", "float", "float"}, "Node", [=](void* p, Args& a) { finite3(a, "rotate"); node_xf(p).r = {a[0].f, a[1].f, a[2].f}; node_sync(p); return Value::object("Node", p); });
+  checked_method(r, "Node", "scale", {"float", "float", "float"}, "Node", [=](void* p, Args& a) { finite3(a, "scale"); for (int i = 0; i < 3; i++) positive(a[i].f, "scale"); node_xf(p).s = {a[0].f, a[1].f, a[2].f}; node_sync(p); return Value::object("Node", p); });
+  checked_method(r, "Node", "parent", {"Node"}, "Node", [=](void* p, Args& a) {
+    auto* n = self<NodeObj>(p); auto* np = static_cast<NodeObj*>(a[0].obj);
+    if (np->scene != n->scene) throw dslvm::Error("node parent must belong to the same scene");
+    for (int i = int(np->node); i >= 0; i = n->scene->preview.nodes[size_t(i)].parent) if (size_t(i) == n->node) throw dslvm::Error("node parent would create a cycle");
+    node_xf(p).parent = int(np->node); node_sync(p); return Value::object("Node", p); });
+  checked_method(r, "Part", "translate", {"float", "float", "float"}, "Part", [=](void* p, Args& a) { finite3(a, "translate"); part_xf(p).t = {a[0].f, a[1].f, a[2].f}; part_sync(p); return Value::object("Part", p); });
+  checked_method(r, "Part", "rotate", {"float", "float", "float"}, "Part", [=](void* p, Args& a) { finite3(a, "rotate"); part_xf(p).r = {a[0].f, a[1].f, a[2].f}; part_sync(p); return Value::object("Part", p); });
+  checked_method(r, "Part", "scale", {"float", "float", "float"}, "Part", [=](void* p, Args& a) { finite3(a, "scale"); for (int i = 0; i < 3; i++) positive(a[i].f, "scale"); part_xf(p).s = {a[0].f, a[1].f, a[2].f}; part_sync(p); return Value::object("Part", p); });
+  checked_method(r, "Part", "parent", {"Node"}, "Part", [=](void* p, Args& a) {
+    auto* q = self<PartObj>(p); auto* np = static_cast<NodeObj*>(a[0].obj);
+    if (np->scene != q->scene) throw dslvm::Error("node parent must belong to the same scene");
+    part_xf(p).parent = int(np->node); part_sync(p); return Value::object("Part", p); });
   checked_method(r, "Scene", "skybox", {"float", "float", "float"}, "Scene", [](void* p, Args& a) {
     auto* s = self<SceneObj>(p);
     for (int i = 0; i < 3; i++) if (!(a[i].f >= 0 && a[i].f <= 1)) throw dslvm::Error("skybox channel must be between 0 and 1");

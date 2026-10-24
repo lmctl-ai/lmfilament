@@ -74,6 +74,54 @@
             ],
             "returns": "Mesh"
           }
+        ],
+        "cylinder": [
+          {
+            "params": [
+              "float",
+              "float",
+              "int"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "cone": [
+          {
+            "params": [
+              "float",
+              "float",
+              "int"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "capsule": [
+          {
+            "params": [
+              "float",
+              "float",
+              "int"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "icosphere": [
+          {
+            "params": [
+              "float",
+              "int"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "text": [
+          {
+            "params": [
+              "string",
+              "float"
+            ],
+            "returns": "Mesh"
+          }
         ]
       }
     },
@@ -284,6 +332,105 @@
               "int"
             ],
             "returns": "void"
+          }
+        ],
+        "node": [
+          {
+            "params": [],
+            "returns": "Node"
+          }
+        ],
+        "add_part": [
+          {
+            "params": [
+              "Mesh",
+              "Material"
+            ],
+            "returns": "Part"
+          }
+        ]
+      }
+    },
+    "Node": {
+      "methods": {
+        "translate": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Node"
+          }
+        ],
+        "rotate": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Node"
+          }
+        ],
+        "scale": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Node"
+          }
+        ],
+        "parent": [
+          {
+            "params": [
+              "Node"
+            ],
+            "returns": "Node"
+          }
+        ]
+      }
+    },
+    "Part": {
+      "methods": {
+        "translate": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Part"
+          }
+        ],
+        "rotate": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Part"
+          }
+        ],
+        "scale": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Part"
+          }
+        ],
+        "parent": [
+          {
+            "params": [
+              "Node"
+            ],
+            "returns": "Part"
           }
         ]
       }

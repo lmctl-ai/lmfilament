@@ -1,6 +1,9 @@
 #include "mesh.hpp"
 #include <geometry/SurfaceOrientation.h>
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <map>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -123,6 +126,146 @@ Mesh load_obj(const std::string& path) {
     const float len = std::sqrt(c[0] * c[0] + c[1] * c[1] + c[2] * c[2]);
     if (len > 0) for (float& x : c) x /= len;
     for (int k = 0; k < 3; k++) for (int j = 0; j < 3; j++) n[k][j] = c[j];
+  }
+  return m;
+}
+
+namespace {
+struct Pt { float r, y, nr, ny; };  // profile point: radius, height, normal (radial, vertical)
+// Revolve profile segments around +Y. Triangles are wound so the geometric normal agrees with the vertex normals.
+void revolve(Mesh& m, const std::vector<std::pair<Pt, Pt>>& segs, int segments) {
+  const float two_pi = 2 * float(M_PI);
+  auto vert = [&](const Pt& p, int k, float v) {
+    const float a = two_pi * float(k) / segments, ca = std::cos(a), sa = std::sin(a);
+    m.positions.insert(m.positions.end(), {p.r * ca, p.y, p.r * sa});
+    float n[3] = {p.nr * ca, p.ny, p.nr * sa};
+    m.normals.insert(m.normals.end(), n, n + 3);
+    m.uvs.insert(m.uvs.end(), {float(k) / segments, v});
+    return uint32_t(m.vertex_count() - 1);
+  };
+  auto tri = [&](uint32_t a, uint32_t b, uint32_t c) {
+    auto P = [&](uint32_t i) { return &m.positions[3 * i]; };
+    const float *pa = P(a), *pb = P(b), *pc = P(c);
+    const float u[3] = {pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]}, w[3] = {pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2]};
+    const float g[3] = {u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]};
+    if (g[0] * g[0] + g[1] * g[1] + g[2] * g[2] < 1e-14f) return;  // degenerate (touches the axis)
+    const float* na = &m.normals[3 * a];
+    if (g[0] * na[0] + g[1] * na[1] + g[2] * na[2] >= 0) m.indices.insert(m.indices.end(), {a, b, c});
+    else m.indices.insert(m.indices.end(), {a, c, b});
+  };
+  for (const auto& [A, B] : segs)
+    for (int k = 0; k < segments; k++) {
+      const uint32_t a0 = vert(A, k, 0), a1 = vert(A, k + 1, 0), b0 = vert(B, k, 1), b1 = vert(B, k + 1, 1);
+      tri(a0, b0, a1); tri(a1, b0, b1);
+    }
+}
+void check_segments(int s) { if (s < 3 || s > 512) throw std::runtime_error("segments must be between 3 and 512"); }
+}  // namespace
+Mesh make_cylinder(float r, float h, int s) {
+  check_segments(s); Mesh m; const float t = h / 2;
+  revolve(m, {{{0, t, 0, 1}, {r, t, 0, 1}}, {{r, t, 1, 0}, {r, -t, 1, 0}}, {{r, -t, 0, -1}, {0, -t, 0, -1}}}, s);
+  return m;
+}
+Mesh make_cone(float r, float h, int s) {
+  check_segments(s); Mesh m; const float t = h / 2, len = std::sqrt(h * h + r * r), nr = h / len, ny = r / len;
+  revolve(m, {{{0, t, nr, ny}, {r, -t, nr, ny}}, {{r, -t, 0, -1}, {0, -t, 0, -1}}}, s);
+  return m;
+}
+Mesh make_capsule(float r, float length, int s) {
+  check_segments(s); Mesh m; const float t = length / 2; const int n = std::max(2, s / 4);
+  std::vector<std::pair<Pt, Pt>> segs;
+  auto top = [&](int i) { const float a = (float(M_PI) / 2) * float(i) / n; return Pt{r * std::sin(a), t + r * std::cos(a), std::sin(a), std::cos(a)}; };
+  for (int i = 0; i < n; i++) segs.push_back({top(i), top(i + 1)});
+  segs.push_back({{r, t, 1, 0}, {r, -t, 1, 0}});
+  auto bot = [&](int i) { const float a = (float(M_PI) / 2) * float(i) / n; return Pt{r * std::cos(a), -t - r * std::sin(a), std::cos(a), -std::sin(a)}; };
+  for (int i = 0; i < n; i++) segs.push_back({bot(i), bot(i + 1)});
+  revolve(m, segs, s);
+  return m;
+}
+Mesh make_icosphere(float radius, int subdivisions) {
+  if (subdivisions < 0 || subdivisions > 5) throw std::runtime_error("icosphere subdivisions must be between 0 and 5");
+  const float t = (1 + std::sqrt(5.f)) / 2;
+  std::vector<std::array<float, 3>> v = {{-1, t, 0}, {1, t, 0}, {-1, -t, 0}, {1, -t, 0}, {0, -1, t}, {0, 1, t}, {0, -1, -t}, {0, 1, -t}, {t, 0, -1}, {t, 0, 1}, {-t, 0, -1}, {-t, 0, 1}};
+  for (auto& p : v) { const float l = std::sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]); for (float& x : p) x /= l; }
+  std::vector<std::array<uint32_t, 3>> f = {{0, 11, 5}, {0, 5, 1}, {0, 1, 7}, {0, 7, 10}, {0, 10, 11}, {1, 5, 9}, {5, 11, 4}, {11, 10, 2}, {10, 7, 6}, {7, 1, 8},
+                                            {3, 9, 4}, {3, 4, 2}, {3, 2, 6}, {3, 6, 8}, {3, 8, 9}, {4, 9, 5}, {2, 4, 11}, {6, 2, 10}, {8, 6, 7}, {9, 8, 1}};
+  for (int i = 0; i < subdivisions; i++) {
+    std::map<std::pair<uint32_t, uint32_t>, uint32_t> cache;
+    auto mid = [&](uint32_t a, uint32_t b) {
+      auto key = std::minmax(a, b);
+      auto it = cache.find({key.first, key.second});
+      if (it != cache.end()) return it->second;
+      std::array<float, 3> p{(v[a][0] + v[b][0]) / 2, (v[a][1] + v[b][1]) / 2, (v[a][2] + v[b][2]) / 2};
+      const float l = std::sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]); for (float& x : p) x /= l;
+      v.push_back(p); return cache[{key.first, key.second}] = uint32_t(v.size() - 1);
+    };
+    std::vector<std::array<uint32_t, 3>> nf;
+    for (auto& tr : f) { const uint32_t a = mid(tr[0], tr[1]), b = mid(tr[1], tr[2]), c = mid(tr[2], tr[0]); nf.push_back({tr[0], a, c}); nf.push_back({tr[1], b, a}); nf.push_back({tr[2], c, b}); nf.push_back({a, b, c}); }
+    f = nf;
+  }
+  Mesh m;
+  for (auto& p : v) {
+    m.positions.insert(m.positions.end(), {p[0] * radius, p[1] * radius, p[2] * radius});
+    m.normals.insert(m.normals.end(), {p[0], p[1], p[2]});
+    m.uvs.insert(m.uvs.end(), {0.5f + std::atan2(p[2], p[0]) / (2 * float(M_PI)), 0.5f - std::asin(std::clamp(p[1], -1.f, 1.f)) / float(M_PI)});
+  }
+  for (auto& tr : f) m.indices.insert(m.indices.end(), tr.begin(), tr.end());
+  return m;
+}
+namespace {
+// 5x7 glyphs, rows top to bottom, '#' = lit.
+struct Glyph { char c; const char* rows[7]; };
+const Glyph kFont[] = {
+ {'A',{".###.","#...#","#...#","#####","#...#","#...#","#...#"}},{'B',{"####.","#...#","#...#","####.","#...#","#...#","####."}},
+ {'C',{".####","#....","#....","#....","#....","#....",".####"}},{'D',{"####.","#...#","#...#","#...#","#...#","#...#","####."}},
+ {'E',{"#####","#....","#....","####.","#....","#....","#####"}},{'F',{"#####","#....","#....","####.","#....","#....","#...."}},
+ {'G',{".####","#....","#....","#.###","#...#","#...#",".###."}},{'H',{"#...#","#...#","#...#","#####","#...#","#...#","#...#"}},
+ {'I',{"#####","..#..","..#..","..#..","..#..","..#..","#####"}},{'J',{"..###","...#.","...#.","...#.","...#.","#..#.",".##.."}},
+ {'K',{"#...#","#..#.","#.#..","##...","#.#..","#..#.","#...#"}},{'L',{"#....","#....","#....","#....","#....","#....","#####"}},
+ {'M',{"#...#","##.##","#.#.#","#.#.#","#...#","#...#","#...#"}},{'N',{"#...#","##..#","#.#.#","#..##","#...#","#...#","#...#"}},
+ {'O',{".###.","#...#","#...#","#...#","#...#","#...#",".###."}},{'P',{"####.","#...#","#...#","####.","#....","#....","#...."}},
+ {'Q',{".###.","#...#","#...#","#...#","#.#.#","#..#.",".##.#"}},{'R',{"####.","#...#","#...#","####.","#.#..","#..#.","#...#"}},
+ {'S',{".####","#....","#....",".###.","....#","....#","####."}},{'T',{"#####","..#..","..#..","..#..","..#..","..#..","..#.."}},
+ {'U',{"#...#","#...#","#...#","#...#","#...#","#...#",".###."}},{'V',{"#...#","#...#","#...#","#...#","#...#",".#.#.","..#.."}},
+ {'W',{"#...#","#...#","#...#","#.#.#","#.#.#","##.##","#...#"}},{'X',{"#...#","#...#",".#.#.","..#..",".#.#.","#...#","#...#"}},
+ {'Y',{"#...#","#...#",".#.#.","..#..","..#..","..#..","..#.."}},{'Z',{"#####","....#","...#.","..#..",".#...","#....","#####"}},
+ {'0',{".###.","#...#","#..##","#.#.#","##..#","#...#",".###."}},{'1',{"..#..",".##..","..#..","..#..","..#..","..#..",".###."}},
+ {'2',{".###.","#...#","....#","...#.","..#..",".#...","#####"}},{'3',{"####.","....#","....#",".###.","....#","....#","####."}},
+ {'4',{"...#.","..##.",".#.#.","#..#.","#####","...#.","...#."}},{'5',{"#####","#....","####.","....#","....#","#...#",".###."}},
+ {'6',{"..##.",".#...","#....","####.","#...#","#...#",".###."}},{'7',{"#####","....#","...#.","..#..",".#...",".#...",".#..."}},
+ {'8',{".###.","#...#","#...#",".###.","#...#","#...#",".###."}},{'9',{".###.","#...#","#...#",".####","....#","...#.",".##.."}},
+ {'.',{".....",".....",".....",".....",".....",".##..",".##.."}},{',',{".....",".....",".....",".....",".##..","..#..",".#..."}},
+ {'!',{"..#..","..#..","..#..","..#..","..#..",".....","..#.."}},{'?',{".###.","#...#","....#","...#.","..#..",".....","..#.."}},
+ {'-',{".....",".....",".....","#####",".....",".....","....."}},{':',{".....",".##..",".##..",".....",".##..",".##..","....."}},
+ {'\'',{"..#..","..#..",".#...",".....",".....",".....","....."}},{'/',{"....#","....#","...#.","..#..",".#...","#....","#...."}},
+ {'+',{".....","..#..","..#..","#####","..#..","..#..","....."}},{'=',{".....",".....","#####",".....","#####",".....","....."}},
+ {'(',{"...#.","..#..",".#...",".#...",".#...","..#..","...#."}},{')',{".#...","..#..","...#.","...#.","...#.","..#..",".#..."}},
+ {'_',{".....",".....",".....",".....",".....",".....","#####"}},
+};
+const Glyph* find_glyph(char c) {
+  if (c >= 'a' && c <= 'z') c = char(c - 'a' + 'A');
+  for (const auto& g : kFont) if (g.c == c) return &g;
+  return nullptr;
+}
+void add_box(Mesh& m, float x0, float y0, float z0, float x1, float y1, float z1) {
+  const float X[2] = {x0, x1}, Y[2] = {y0, y1}, Z[2] = {z0, z1};
+  for (int axis = 0; axis < 3; axis++) for (int side = 0; side < 2; side++) {
+    float p[4][3], n[3] = {0, 0, 0}; n[axis] = side ? 1.f : -1.f;
+    const int u = (axis + 1) % 3, v = (axis + 2) % 3;
+    const float* A[3] = {X, Y, Z};
+    for (int i = 0; i < 4; i++) { p[i][axis] = A[axis][side]; p[i][u] = A[u][(i == 1 || i == 2) ? 1 : 0]; p[i][v] = A[v][(i >= 2) ? 1 : 0]; }
+    quad(m, p, n);
+  }
+}
+}  // namespace
+Mesh make_text(const std::string& text, float height) {
+  Mesh m; const float px = height / 7.f; float x = 0;
+  for (char ch : text) {
+    if (ch == ' ') { x += 6 * px; continue; }
+    const Glyph* g = find_glyph(ch); if (!g) g = find_glyph('?');
+    for (int row = 0; row < 7; row++) for (int col = 0; col < 5; col++) if (g->rows[row][col] == '#')
+      add_box(m, x + col * px, (6 - row) * px, 0.f, x + (col + 1) * px, (7 - row) * px, px);
+    x += 6 * px;
   }
   return m;
 }

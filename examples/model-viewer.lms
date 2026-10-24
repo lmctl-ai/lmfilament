@@ -1,0 +1,36 @@
+# lmfilament port of Magnum Python example "Model viewer" (https://doc.magnum.graphics/python/examples/#model-viewer)
+# A posed model under one scene-graph node: a toy robot (box body, sphere head, cylinder limbs) standing on a plane, built from primitives instead of an imported file (the host has OBJ import via fil.mesh_obj, but no bundled model).
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/model-viewer.lms
+# Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/model-viewer.png).
+out = ARGV.len() > 0 ? ARGV[0] : "build/model-viewer.dslb";
+mkdir("build");
+mkdir("images");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("aiDefaultMat", "material {\n    name : AssimpDefaultMat,\n    shadingModel : lit,\n    parameters : [\n        {\n            type : float3,\n            name : baseColor\n        },\n        {\n            type : float,\n            name : metallic\n        },\n        {\n            type : float,\n            name : roughness\n        },\n        {\n            type : float,\n            name : reflectance\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = materialParams.baseColor;\n        material.metallic = materialParams.metallic;\n        material.roughness = materialParams.roughness;\n        material.reflectance = materialParams.reflectance;\n    }\n}\n");
+mat.set_float("metallic", 0.0);
+mat.set_float("roughness", 0.45);
+let s = fil.scene();
+s.skybox(0.05, 0.055, 0.07);
+let robot = s.node().rotate(0.0, -25.0, 0.0);
+mat.set_float3("baseColor", 0.28, 0.3, 0.34);
+s.add_part(fil.plane(10.0, 10.0), mat).translate(0.0, -2.0, 0.0);
+mat.set_float3("baseColor", 0.7, 0.72, 0.78);
+s.add_part(fil.box(1.4, 1.8, 1.0), mat).parent(robot);
+s.add_part(fil.sphere(0.6, 24), mat).translate(0.0, 1.5, 0.0).parent(robot);
+s.add_part(fil.cylinder(0.18, 1.4, 24), mat).translate(-1.0, 0.1, 0.0).rotate(0.0, 0.0, 15.0).parent(robot);
+s.add_part(fil.cylinder(0.18, 1.4, 24), mat).translate(1.0, 0.1, 0.0).rotate(0.0, 0.0, -15.0).parent(robot);
+s.add_part(fil.cylinder(0.22, 1.2, 24), mat).translate(-0.4, -1.4, 0.0).parent(robot);
+s.add_part(fil.cylinder(0.22, 1.2, 24), mat).translate(0.4, -1.4, 0.0).parent(robot);
+mat.set_float3("baseColor", 0.1, 0.8, 0.9);
+s.add_part(fil.sphere(0.12, 16), mat).translate(-0.2, 1.6, 0.55).parent(robot);
+s.add_part(fil.sphere(0.12, 16), mat).translate(0.2, 1.6, 0.55).parent(robot);
+s.directional_light(1.0, 1.0, 1.0, 110000.0, -0.5, -1.0, -0.6);
+s.camera(35.0, 3.0, 2.5, 8.0, 0.0, 0.0, 0.0);
+s.render_frames(2);
+s.render_png("images/model-viewer.png", 640, 640);
+end _dsl_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok model-viewer");

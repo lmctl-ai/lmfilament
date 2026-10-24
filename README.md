@@ -31,7 +31,7 @@ See [durable-memory/](durable-memory/).
 
 ## Examples
 
-Each picture is produced by a self-contained `.lms` port of an upstream Filament C++ sample in
+Each picture is produced by a self-contained `.lms` port of an upstream Filament C++ sample or of a [Magnum Python example](https://doc.magnum.graphics/python/examples/) in
 [`examples/`](examples) (materials are inlined, so the `lmctl autorun` command in each caption runs from any
 directory and writes `images/<name>.png`). `examples/render-all.sh` regenerates all of them; the two Suzanne examples
 read the OBJ from a Filament checkout (`scripts/sync-filament.sh`).
@@ -43,20 +43,25 @@ read the OBJ from a Filament checkout (`scripts/sync-filament.sh`).
 | <img src="docs/images/hellotriangle.png" width="290"> | <img src="docs/images/hellopbr.png" width="290"> | <img src="docs/images/suzanne.png" width="290"> |
 | Upstream hellotriangle: unlit `bakedColor` material<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/hellotriangle.lms` | Metallic 1, roughness 0.4, sun light (needs a clone for the OBJ)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/hellopbr.lms` | Same scene with the textured material (textures not wired yet; needs a clone)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/suzanne.lms` |
 
-| Depth testing | Vertex buffer layout | Blue skybox view |
+| Primitives | Primitives, using a scene graph | Model viewer |
 | --- | --- | --- |
-| <img src="docs/images/depthtesting.png" width="290"> | <img src="docs/images/vbotest.png" width="290"> | <img src="docs/images/viewtest.png" width="290"> |
-| Two triangles at different depths; the nearer one wins<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/depthtesting.lms` | Position + packed ubyte4 color, `bakedColor`<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/vbotest.lms` | Triangle on a pure blue skybox<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/viewtest.lms` |
+| <img src="docs/images/primitives.png" width="290"> | <img src="docs/images/primitives-scene-graph.png" width="290"> | <img src="docs/images/model-viewer.png" width="290"> |
+| Magnum Python example: box, sphere, icosphere, cylinder, cone, capsule<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/primitives.lms` | Magnum Python example: parts parented to nested `Node`s (Filament TransformManager)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/primitives-scene-graph.lms` | Magnum Python example: a posed robot under one scene-graph node<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/model-viewer.lms` |
 
-| Sun + five point lights | Ground plane and sun | Material sandbox |
+| Text | Depth testing | Vertex buffer layout |
 | --- | --- | --- |
-| <img src="docs/images/lightbulb.png" width="290"> | <img src="docs/images/shadowtest.png" width="290"> | <img src="docs/images/material_sandbox.png" width="290"> |
-| Metal sphere over a ground plane at the upstream light positions<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/lightbulb.lms` | `groundShadow` plane and a lit sphere on a sky-blue skybox<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/shadowtest.lms` | Nine sandbox materials on spheres (lit, fade, transparent, refraction, cloth, ...)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/material_sandbox.lms` |
+| <img src="docs/images/text.png" width="290"> | <img src="docs/images/depthtesting.png" width="290"> | <img src="docs/images/vbotest.png" width="290"> |
+| Magnum Python example: voxel text from a 5x7 font<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/text.lms` | Two triangles at different depths; the nearer one wins<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/depthtesting.lms` | Position + packed ubyte4 color, `bakedColor`<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/vbotest.lms` |
 
-| Textured quad | Heightfield plane |   |
+| Blue skybox view | Sun + five point lights | Ground plane and sun |
 | --- | --- | --- |
-| <img src="docs/images/texturedquad.png" width="290"> | <img src="docs/images/heightfield.png" width="290"> |   |
-| `bakedTexture` quad (texture parameter not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texturedquad.lms` | `heightfield` material on a quad (height texture not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/heightfield.lms` |   |
+| <img src="docs/images/viewtest.png" width="290"> | <img src="docs/images/lightbulb.png" width="290"> | <img src="docs/images/shadowtest.png" width="290"> |
+| Triangle on a pure blue skybox<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/viewtest.lms` | Metal sphere over a ground plane at the upstream light positions<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/lightbulb.lms` | `groundShadow` plane and a lit sphere on a sky-blue skybox<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/shadowtest.lms` |
+
+| Material sandbox | Textured quad | Heightfield plane |
+| --- | --- | --- |
+| <img src="docs/images/material_sandbox.png" width="290"> | <img src="docs/images/texturedquad.png" width="290"> | <img src="docs/images/heightfield.png" width="290"> |
+| Nine sandbox materials on spheres (lit, fade, transparent, refraction, cloth, ...)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/material_sandbox.lms` | `bakedTexture` quad (texture parameter not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texturedquad.lms` | `heightfield` material on a quad (height texture not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/heightfield.lms` |
 
 ## Build
 
