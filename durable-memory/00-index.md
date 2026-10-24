@@ -13,7 +13,7 @@ PATH=$PWD/build/host:$PATH ./test.sh   # signatures, static link, every example,
 ```
 
 Change flow: edit `schema/lmfilament.dsl.json` + `register_host()` in `cpp/main.cpp` (and `cpp/preview.cpp` if pictures change), rebuild,
-run `./test.sh`, update docs, `git commit && git push origin main` (CI releases automatically).
+run `./test.sh`.
 
 ## Doc map
 
@@ -24,7 +24,7 @@ run `./test.sh`, update docs, `git commit && git push origin main` (CI releases 
 5. `05-open-items.md`: what is not done and why.
 6. `06-upstream-sample-map.md`: which Filament / Magnum / lmblender / lmcad scene each example ports and what it drops.
 7. `07-ci-and-release.md`: CI matrix, automatic releases.
-20. `20-sibling-3d-hosts-and-conventions.md`: the four 3D repos side by side, DSL cheat sheet, porting rules, README conventions, **mandatory working conventions**.
+20. `20-sibling-3d-hosts.md`: pointer to the cross-repo reference in lmcad (host comparison, DSL cheat sheet, porting rules, shared examples).
 
 ## State (2026-10-24)
 
