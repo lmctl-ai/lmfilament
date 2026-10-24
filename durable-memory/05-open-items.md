@@ -2,9 +2,7 @@
 
 1. **Real Filament pixels.** Only the CPU preview exists (`render_png`). Filament-rendered output would need a
    software GL/Vulkan path (e.g. OSMesa or SwiftShader) linked statically, which is a separate decision.
-2. **Textures.** `Material.set_texture`, KTX/PNG loading and sampler parameters would unlock the textured
-   parts of `suzanne`, `texturedquad`, `heightfield`, `point_sprites`. The `libimage`/`ktxreader`/`stb`
-   archives are already built.
+2. **Texture follow-ups.** `Material.set_texture`, `Filament.texture*` and sampling in the preview exist (see 03). Missing: KTX/KTX2 (`ktxreader` is built), cubemap and 3D samplers, texture formats other than 8-bit RGBA, shading with roughness/metallic/normal/ao maps (uploaded to Filament but unused by the preview), vertex-stage texture reads (`heightfield` displaces in the vertex shader, so it stays a stand-in), and point sprites (`point_sprites`).
 3. **More upstream samples.** Not ported: skinning/morphing (`helloskinning*`, `hellomorphing`),
    `hellostereo`, `rendertarget`, `multiple_windows`, `gltf_viewer`/`gltf_instances` (gltfio is built but
    unused), `image_viewer`, `frame_generator`, benchmarks. Each needs new schema surface.

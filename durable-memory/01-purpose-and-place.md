@@ -29,5 +29,5 @@ What is not: Filament pixels. `Scene.render_frames(n)` drives `beginFrame/render
 and returns the number of frames drawn. Pictures come from `Scene.render_png(path, w, h)`, lmfilament's own CPU preview rasterizer (`cpp/preview.cpp`):
 z-buffer, near-plane clipping, 2x2 supersampling in linear light, Lambert shading from the scene's lights,
 `baseColor`/`color` material parameter as albedo, unlit per-vertex colors, mild tone map, an optional shadow map for the first
-directional light (`Scene.shadows(true)`). No textures, specular or PBR; light units are mapped to a fixed preview exposure. It exists for documentation and smoke tests;
+directional light (`Scene.shadows(true)`). Albedo textures (trilinear or nearest) but no specular, normal maps or PBR; light units are mapped to a fixed preview exposure. It exists for documentation and smoke tests;
 it is not Filament's renderer. See `05-open-items.md`.

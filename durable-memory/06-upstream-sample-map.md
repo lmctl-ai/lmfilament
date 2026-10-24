@@ -8,11 +8,11 @@
 | `strobecolor.cpp` | `strobecolor.lms` | skybox only; per-frame animation not expressible |
 | `depthtesting.cpp` | `depthtesting.lms` | two depth-separated triangles |
 | `hellopbr.cpp` | `hellopbr.lms` | monkey.obj, aiDefaultMat parameters, sun light as upstream |
-| `suzanne.cpp` | `suzanne.lms` | geometry/material/light; PNG textures missing |
+| `suzanne.cpp` | `suzanne.lms` | geometry/material/light; the five monkey PNGs bound to the sampler parameters (preview shades with the albedo only) |
 | `shadowtest.cpp` | `shadowtest.lms` | ground + sphere + sun; shadow options not exposed |
 | `lightbulb.cpp` | `lightbulb.lms` | sphere stand-in for the bulb model; spot lights as point lights |
-| `heightfield.cpp` | `heightfield.lms` | material compiles; plane stand-in, height texture missing |
-| `texturedquad.cpp` | `texturedquad.lms` | quad + bakedTexture; texture missing |
+| `heightfield.cpp` | `heightfield.lms` | material compiles; plane stand-in (the height texture is read in the vertex stage, which the preview does not run) |
+| `texturedquad.cpp` | `texturedquad.lms` | quad + bakedTexture with the upstream Moss_01 colour image |
 | `point_sprites.cpp` | `point_sprites.lms` | material only |
 | `material_sandbox.cpp` | `material_sandbox.lms` | all sandbox materials on spheres |
 | `materials/*.mat` | `compile-sample-materials.lms` | all 28 compile to `build/materials/*.filamat` |
@@ -27,6 +27,9 @@
 | lmblender `cornell-box` | `cornell-box.lms` | no global illumination (preview shading only) |
 | lmblender `saturn-rings` | `saturn-rings.lms` | `fil.ring` bands, no planet shadow |
 | lmcad `truss-bridge` | `truss-bridge.lms` | 3D part only; member colour/radius from the closed-form forces |
+| lmmagnum `texture-modes` | `texture-modes.lms` | filtering, mip levels, wrap modes through sampler parameters |
+| lmmagnum `textured-planet` | `textured-planet.lms` | generated Earth/moon maps on lit spheres, 36-frame GIF |
+| lmmagnum `textured-primitives` | `textured-primitives.lms` | brick image on every primitive, shadow map |
 | magnum-examples `shadows` | `shadows.lms` | preview shadow map (`scene.shadows(true)`) instead of Filament's cascaded maps |
 | magnum-examples `multidraw` | `multidraw.lms` | 180 meshes, each its own renderable |
 | magnum-examples `cubemap` | `cubemap.lms` | six-face room + spheres; no reflections |

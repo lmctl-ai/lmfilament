@@ -1,6 +1,7 @@
 #include "dslvm.hpp"
 #include "mesh.hpp"
 #include "preview.hpp"
+#include "texture.hpp"
 #include "schema_embedded.hpp"
 #include <backend/DriverEnums.h>
 #include <filament/Camera.h>
@@ -16,6 +17,8 @@
 #include <filament/Renderer.h>
 #include <filament/Scene.h>
 #include <filament/SwapChain.h>
+#include <filament/Texture.h>
+#include <filament/TextureSampler.h>
 #include <filament/VertexBuffer.h>
 #include <filament/View.h>
 #include <filament/Viewport.h>
@@ -30,6 +33,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <regex>
 #include <map>
 #include <sstream>
 #include <vector>
@@ -46,7 +50,12 @@ struct MatConfig : matp::Config {
   std::string toPIISafeString() const noexcept override { return "lmfilament"; }
 };
 
-struct MaterialObj { std::string name; std::vector<uint8_t> package; std::vector<std::pair<std::string, std::vector<float>>> params; };
+struct TextureObj { lmfilament::Texture tex; };
+struct MaterialObj {
+  std::string name; std::vector<uint8_t> package; std::vector<std::pair<std::string, std::vector<float>>> params;
+  std::vector<std::pair<std::string, const TextureObj*>> textures;   // sampler parameter -> image (uploaded when the material is added to a scene)
+  bool unlit = false;                                                 // `shadingModel : unlit` in the source: the preview draws the albedo as is
+};
 struct MeshObj { lmfilament::Mesh mesh; };
 
 struct SceneObj {
@@ -59,7 +68,7 @@ struct SceneObj {
   SwapChain* swap = nullptr;
   Skybox* skybox = nullptr;
   std::vector<utils::Entity> entities;
-  std::vector<VertexBuffer*> vbs; std::vector<IndexBuffer*> ibs; std::vector<filament::Material*> materials;
+  std::vector<VertexBuffer*> vbs; std::vector<IndexBuffer*> ibs; std::vector<filament::Material*> materials; std::vector<filament::Texture*> textures;
   size_t renderables = 0, lights = 0;
   lmfilament::PreviewScene preview;
   std::vector<utils::Entity> node_entities;
@@ -79,6 +88,7 @@ struct SceneObj {
     for (auto* v : vbs) engine->destroy(v);
     for (auto* i : ibs) engine->destroy(i);
     for (auto* m : materials) { engine->destroy(m); }
+    for (auto* t : textures) engine->destroy(t);
     engine->destroyCameraComponent(camera_entity); utils::EntityManager::get().destroy(camera_entity);
     if (skybox) engine->destroy(skybox);
     engine->destroy(swap); engine->destroy(view); engine->destroy(scene); engine->destroy(renderer);
@@ -93,6 +103,7 @@ struct Host {
   std::vector<std::unique_ptr<NodeObj>> nodes;
   std::vector<std::unique_ptr<MaterialObj>> materials;
   std::vector<std::unique_ptr<MeshObj>> meshes;
+  std::vector<std::unique_ptr<TextureObj>> textures; size_t texture_bytes = 0;
   std::vector<std::unique_ptr<SceneObj>> scenes;
   template<class T> Value hold(std::vector<std::unique_ptr<T>>& arena, const char* type, std::unique_ptr<T> v) {
     if (arena.size() >= 4096) throw dslvm::Error(std::string(type) + " object limit exceeded (4096)");
@@ -122,6 +133,7 @@ std::unique_ptr<MaterialObj> compile_material(const std::string& name, std::stri
     out = std::make_unique<MaterialObj>();
     out->name = name;
     out->package.assign(pkg.getData(), pkg.getData() + pkg.getSize());
+    out->unlit = std::regex_search(source, std::regex("shadingModel\\s*:\\s*unlit"));
   } catch (...) { filamat::MaterialBuilder::shutdown(); throw; }
   filamat::MaterialBuilder::shutdown();
   return out;
@@ -155,6 +167,11 @@ void checked_method(dslvm::Registry& r, const char* type, const char* name, std:
   });
 }
 
+Value add_texture(Host& h, std::unique_ptr<TextureObj> t) {
+  const size_t bytes = t->tex.rgba.size();
+  if (h.texture_bytes + bytes > (size_t(1) << 29)) throw dslvm::Error("texture memory limit exceeded (512 MiB of pixels per run)");
+  h.texture_bytes += bytes; return h.hold(h.textures, "Texture", std::move(t));
+}
 void register_host(dslvm::Registry& r, Host& h) {
   r.context("fil", "Filament");
   checked_method(r, "Filament", "version", {}, "string", [](void*, Args&) { return Value::string(LMFILAMENT_FILAMENT_VERSION); });
@@ -211,6 +228,48 @@ void register_host(dslvm::Registry& r, Host& h) {
   checked_method(r, "Material", "set_float", {"string", "float"}, "Material", set_param("set_float", 1));
   checked_method(r, "Material", "set_float3", {"string", "float", "float", "float"}, "Material", set_param("set_float3", 3));
   checked_method(r, "Material", "set_float4", {"string", "float", "float", "float", "float"}, "Material", set_param("set_float4", 4));
+  checked_method(r, "Filament", "texture", {"int", "int"}, "Texture", [&h](void*, Args& a) {
+    if (a[0].i < 1 || a[1].i < 1 || a[0].i > 4096 || a[1].i > 4096) throw dslvm::Error("texture size must be between 1 and 4096 per side");
+    auto t = std::make_unique<TextureObj>(); t->tex.width = int(a[0].i); t->tex.height = int(a[1].i); t->tex.rgba.assign(size_t(t->tex.width) * t->tex.height * 4, 255);
+    return add_texture(h, std::move(t)); });
+  checked_method(r, "Filament", "texture_file", {"string"}, "Texture", [&h](void*, Args& a) {
+    auto t = std::make_unique<TextureObj>(); t->tex = lmfilament::load_texture(a[0].s); return add_texture(h, std::move(t)); });
+  checked_method(r, "Filament", "texture_checker", {"int", "int", "float", "float", "float", "float", "float", "float"}, "Texture", [&h](void*, Args& a) {
+    if (a[0].i < 1 || a[0].i > 4096) throw dslvm::Error("texture size must be between 1 and 4096");
+    if (a[1].i < 1 || a[1].i > a[0].i) throw dslvm::Error("checker cell must be between 1 and the texture size");
+    for (int i = 2; i < 8; i++) if (!(a[i].f >= 0 && a[i].f <= 1)) throw dslvm::Error("checker colour must be between 0 and 1");
+    auto t = std::make_unique<TextureObj>();
+    t->tex = lmfilament::Texture::checker(int(a[0].i), int(a[1].i), {float(a[2].f), float(a[3].f), float(a[4].f)}, {float(a[5].f), float(a[6].f), float(a[7].f)});
+    return add_texture(h, std::move(t)); });
+  checked_method(r, "Texture", "pixel", {"int", "int", "float", "float", "float"}, "Texture", [](void* p, Args& a) {
+    auto& t = self<TextureObj>(p)->tex;
+    if (a[0].i < 0 || a[1].i < 0 || a[0].i >= t.width || a[1].i >= t.height) throw dslvm::Error("pixel coordinates are outside the texture");
+    for (int i = 2; i < 5; i++) if (!(a[i].f >= 0 && a[i].f <= 1)) throw dslvm::Error("pixel colour must be between 0 and 1");
+    const size_t o = (size_t(a[1].i) * t.width + size_t(a[0].i)) * 4;
+    for (int c = 0; c < 3; c++) t.rgba[o + c] = static_cast<uint8_t>(std::lround(a[2 + c].f * 255.0));
+    t.rgba[o + 3] = 255; t.dirty = true; return Value::object("Texture", p); });
+  checked_method(r, "Texture", "filter", {"string"}, "Texture", [](void* p, Args& a) {
+    if (a[0].s == "linear") self<TextureObj>(p)->tex.linear = true; else if (a[0].s == "nearest") self<TextureObj>(p)->tex.linear = false;
+    else throw dslvm::Error("texture filter must be \"linear\" or \"nearest\"");
+    return Value::object("Texture", p); });
+  checked_method(r, "Texture", "wrap", {"string"}, "Texture", [](void* p, Args& a) {
+    auto& t = self<TextureObj>(p)->tex;
+    if (a[0].s == "repeat") t.wrap = lmfilament::Texture::Wrap::Repeat; else if (a[0].s == "clamp") t.wrap = lmfilament::Texture::Wrap::Clamp; else if (a[0].s == "mirror") t.wrap = lmfilament::Texture::Wrap::Mirror;
+    else throw dslvm::Error("texture wrap must be \"repeat\", \"clamp\" or \"mirror\"");
+    return Value::object("Texture", p); });
+  checked_method(r, "Texture", "repeat", {"float", "float"}, "Texture", [](void* p, Args& a) {
+    positive(a[0].f, "repeat u"); positive(a[1].f, "repeat v"); self<TextureObj>(p)->tex.scale_u = float(a[0].f); self<TextureObj>(p)->tex.scale_v = float(a[1].f); return Value::object("Texture", p); });
+  checked_method(r, "Texture", "width", {}, "int", [](void* p, Args&) { return Value::integer(self<TextureObj>(p)->tex.width); });
+  checked_method(r, "Texture", "height", {}, "int", [](void* p, Args&) { return Value::integer(self<TextureObj>(p)->tex.height); });
+  checked_method(r, "Texture", "save_png", {"string"}, "void", [](void* p, Args& a) {
+    const auto& t = self<TextureObj>(p)->tex; std::vector<unsigned char> rgb(size_t(t.width) * t.height * 3);
+    for (size_t i = 0; i < size_t(t.width) * t.height; i++) for (int c = 0; c < 3; c++) rgb[i * 3 + c] = t.rgba[i * 4 + c];
+    lmfilament::write_png_rgb(a[0].s, t.width, t.height, rgb); return Value::none(); });
+  checked_method(r, "Material", "set_texture", {"string", "Texture"}, "Material", [](void* p, Args& a) {
+    if (a[0].s.empty()) throw dslvm::Error("set_texture: parameter name must not be empty");
+    auto* m = self<MaterialObj>(p); const auto* t = static_cast<const TextureObj*>(a[1].obj);
+    for (auto& kv : m->textures) if (kv.first == a[0].s) { kv.second = t; return Value::object("Material", p); }
+    m->textures.emplace_back(a[0].s, t); return Value::object("Material", p); });
   checked_method(r, "Filament", "cylinder", {"float", "float", "int"}, "Mesh", [&h](void*, Args& a) { positive(a[0].f, "cylinder radius"); positive(a[1].f, "cylinder height");
     auto m = std::make_unique<MeshObj>(); m->mesh = lmfilament::make_cylinder(float(a[0].f), float(a[1].f), int(a[2].i)); return h.hold(h.meshes, "Mesh", std::move(m)); });
   checked_method(r, "Filament", "cone", {"float", "float", "int"}, "Mesh", [&h](void*, Args& a) { positive(a[0].f, "cone radius"); positive(a[1].f, "cone height");
@@ -250,13 +309,44 @@ void register_host(dslvm::Registry& r, Host& h) {
     if (!mp) throw dslvm::Error("Filament rejected material " + mat->name);
     s->materials.push_back(mp);
     auto* mi = mp->getDefaultInstance();
+    std::vector<filament::Material::ParameterInfo> infos(mp->getParameterCount());
+    mp->getParameters(infos.data(), infos.size());
+    auto info_of = [&](const std::string& name) -> const filament::Material::ParameterInfo* {
+      for (const auto& i : infos) if (name == i.name) return &i;
+      return nullptr;
+    };
     for (auto& [name, v] : mat->params) {
-      if (!mp->hasParameter(name.c_str())) throw dslvm::Error("material " + mat->name + " has no parameter '" + name + "'");
+      const auto* info = info_of(name);
+      if (!info) throw dslvm::Error("material " + mat->name + " has no parameter '" + name + "'");
+      if (info->isSampler) throw dslvm::Error("material " + mat->name + " parameter '" + name + "' is a sampler: use set_texture");
       switch (v.size()) {
         case 1: mi->setParameter(name.c_str(), v[0]); break;
         case 3: mi->setParameter(name.c_str(), math::float3{v[0], v[1], v[2]}); break;
         case 4: mi->setParameter(name.c_str(), math::float4{v[0], v[1], v[2], v[3]}); break;
       }
+    }
+    const lmfilament::Texture* albedo = nullptr; int albedo_rank = 99;
+    for (auto& [name, tobj] : mat->textures) {
+      const auto* info = info_of(name);
+      if (!info) throw dslvm::Error("material " + mat->name + " has no parameter '" + name + "'");
+      if (!info->isSampler) throw dslvm::Error("material " + mat->name + " parameter '" + name + "' is not a sampler");
+      if (info->samplerType != filament::Material::SamplerType::SAMPLER_2D) throw dslvm::Error("material " + mat->name + " parameter '" + name + "': only sampler2d parameters take a texture");
+      const lmfilament::Texture& t = tobj->tex;
+      static const char* const color_names[] = {"albedo", "baseColor", "color", "emissive"};
+      int rank = 99; for (int k = 0; k < 4; k++) if (name == color_names[k]) rank = k;
+      auto* ft = filament::Texture::Builder().width(uint32_t(t.width)).height(uint32_t(t.height)).levels(uint8_t(t.mip_count()))
+          .format(rank < 99 ? filament::Texture::InternalFormat::SRGB8_A8 : filament::Texture::InternalFormat::RGBA8)
+          .sampler(filament::Texture::Sampler::SAMPLER_2D).usage(filament::Texture::Usage::DEFAULT | filament::Texture::Usage::GEN_MIPMAPPABLE).build(*s->engine);
+      if (!ft) throw dslvm::Error("Filament rejected the texture for '" + name + "'");
+      auto* copy = new std::vector<uint8_t>(t.rgba);
+      ft->setImage(*s->engine, 0, filament::Texture::PixelBufferDescriptor(copy->data(), copy->size(), filament::Texture::Format::RGBA, filament::Texture::Type::UBYTE,
+          [](void*, size_t, void* u) { delete static_cast<std::vector<uint8_t>*>(u); }, copy));
+      ft->generateMipmaps(*s->engine);
+      s->textures.push_back(ft);
+      using MinF = filament::TextureSampler::MinFilter; using MagF = filament::TextureSampler::MagFilter; using Wm = filament::TextureSampler::WrapMode;
+      const Wm wm = t.wrap == lmfilament::Texture::Wrap::Clamp ? Wm::CLAMP_TO_EDGE : t.wrap == lmfilament::Texture::Wrap::Mirror ? Wm::MIRRORED_REPEAT : Wm::REPEAT;
+      mi->setParameter(name.c_str(), ft, filament::TextureSampler(t.linear ? MinF::LINEAR_MIPMAP_LINEAR : MinF::NEAREST, t.linear ? MagF::LINEAR : MagF::NEAREST, wm));
+      if (rank < albedo_rank || (!albedo && rank == 99)) { albedo = &t; albedo_rank = rank; }
     }
     const bool colors = !mesh.colors.empty();
     VertexBuffer::Builder vbb;
@@ -290,7 +380,7 @@ void register_host(dslvm::Registry& r, Host& h) {
     auto& tcm = s->engine->getTransformManager();
     tcm.create(e);
     {
-      lmfilament::PreviewItem item; item.mesh = mesh;
+      lmfilament::PreviewItem item; item.mesh = mesh; item.texture = albedo; item.unlit = mat->unlit;
       for (auto& [name, v] : mat->params) if ((name == "baseColor" || name == "color") && v.size() >= 3) item.base_color = {v[0], v[1], v[2]};
       s->preview.items.push_back(std::move(item));
     }

@@ -146,6 +146,38 @@
             ],
             "returns": "Mesh"
           }
+        ],
+        "texture": [
+          {
+            "params": [
+              "int",
+              "int"
+            ],
+            "returns": "Texture"
+          }
+        ],
+        "texture_file": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Texture"
+          }
+        ],
+        "texture_checker": [
+          {
+            "params": [
+              "int",
+              "int",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Texture"
+          }
         ]
       }
     },
@@ -199,6 +231,15 @@
               "float",
               "float",
               "float"
+            ],
+            "returns": "Material"
+          }
+        ],
+        "set_texture": [
+          {
+            "params": [
+              "string",
+              "Texture"
             ],
             "returns": "Material"
           }
@@ -471,6 +512,67 @@
               "bool"
             ],
             "returns": "Part"
+          }
+        ]
+      }
+    },
+    "Texture": {
+      "methods": {
+        "pixel": [
+          {
+            "params": [
+              "int",
+              "int",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Texture"
+          }
+        ],
+        "filter": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Texture"
+          }
+        ],
+        "wrap": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Texture"
+          }
+        ],
+        "repeat": [
+          {
+            "params": [
+              "float",
+              "float"
+            ],
+            "returns": "Texture"
+          }
+        ],
+        "width": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "height": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "save_png": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "void"
           }
         ]
       }

@@ -28,7 +28,7 @@ M4 world(const std::vector<XForm>& nodes, const XForm& x) {
   for (int guard = 0; p >= 0 && guard < 4096; guard++) { m = mul(local(nodes[size_t(p)]), m); p = nodes[size_t(p)].parent; }
   return m;
 }
-struct Vtx { double x, y, z; V3 world, normal, color; bool has_color; };  // x,y,z in camera space
+struct Vtx { double x, y, z; V3 world, normal, color; double u = 0, v = 0; bool has_color; };  // x,y,z in camera space
 
 Vtx lerp(const Vtx& a, const Vtx& b, double t) {
   Vtx r;
@@ -38,9 +38,11 @@ Vtx lerp(const Vtx& a, const Vtx& b, double t) {
     r.normal[i] = a.normal[i] + (b.normal[i] - a.normal[i]) * t;
     r.color[i] = a.color[i] + (b.color[i] - a.color[i]) * t;
   }
+  r.u = a.u + (b.u - a.u) * t; r.v = a.v + (b.v - a.v) * t;
   r.has_color = a.has_color;
   return r;
 }
+double from_srgb(double v) { return v <= 0.04045 ? v / 12.92 : std::pow((v + 0.055) / 1.055, 2.4); }
 double to_srgb(double v) { v = std::clamp(v, 0.0, 1.0); return v <= 0.0031308 ? 12.92 * v : 1.055 * std::pow(v, 1 / 2.4) - 0.055; }
 void put32(std::vector<unsigned char>& o, uint32_t v) { for (int s : {24, 16, 8, 0}) o.push_back(static_cast<unsigned char>(v >> s)); }
 uint32_t crc32(const unsigned char* p, size_t n) {
@@ -129,6 +131,8 @@ void render_png(const PreviewScene& sc, int w, int h, const std::string& path) {
   for (const auto& item : sc.items) {
     if (!item.visible) continue;
     const auto& m = item.mesh;
+    const Texture* tex = item.texture;
+    if (tex && m.uvs.size() != m.vertex_count() * 2) throw std::runtime_error("a mesh with a texture needs texture coordinates");
     const M4 WM = world(sc.nodes, item.xf);
     // Normals use the cofactor matrix of the upper 3x3 (inverse transpose up to scale), sign-corrected by the determinant.
     const double a = WM[0], b = WM[1], cc = WM[2], d = WM[4], e = WM[5], f = WM[6], g = WM[8], hh = WM[9], ii = WM[10];
@@ -150,6 +154,7 @@ void render_png(const PreviewScene& sc, int w, int h, const std::string& path) {
           const double l = std::sqrt(dot(v.normal, v.normal));
           if (l > 0) for (double& q : v.normal) q /= l;
         }
+        if (tex) { v.u = m.uvs[2 * i]; v.v = m.uvs[2 * i + 1]; }
         v.has_color = !m.colors.empty();
         if (v.has_color) { const uint32_t c = m.colors[i]; v.color = {(c & 255) / 255.0, ((c >> 8) & 255) / 255.0, ((c >> 16) & 255) / 255.0}; }
         else v.color = {item.base_color[0], item.base_color[1], item.base_color[2]};
@@ -185,7 +190,19 @@ void render_png(const PreviewScene& sc, int w, int h, const std::string& path) {
           depth[at] = z;
           auto mix = [&](const V3& p, const V3& q, const V3& r) { V3 o; for (int i = 0; i < 3; i++) o[i] = (p[i] * wa + q[i] * wb + r[i] * wc) / sum; return o; };
           V3 color = mix(tri[0].color, tri[1].color, tri[2].color), out;
-          if (tri[0].has_color) out = color;  // unlit vertex colors
+          if (tex) {  // perspective-correct UV; finite differences of it in screen space pick the mip level
+            auto uv_at = [&](double qx, double qy) {
+              const double ua = ((sx[1] - qx) * (sy[2] - qy) - (sy[1] - qy) * (sx[2] - qx)) / area, ub = ((sx[2] - qx) * (sy[0] - qy) - (sy[2] - qy) * (sx[0] - qx)) / area, uc = 1 - ua - ub;
+              const double ra = ua / tri[0].z, rb = ub / tri[1].z, rc = uc / tri[2].z, rs = ra + rb + rc;
+              return std::array<double, 2>{(tri[0].u * ra + tri[1].u * rb + tri[2].u * rc) / rs, (tri[0].v * ra + tri[1].v * rb + tri[2].v * rc) / rs};
+            };
+            const auto uv = uv_at(px, py), ux = uv_at(px + 1, py), uy = uv_at(px, py + 1);
+            const double tw = tex->width * double(tex->scale_u), th = tex->height * double(tex->scale_v);
+            const double rho = std::max(std::hypot((ux[0] - uv[0]) * tw, (ux[1] - uv[1]) * th), std::hypot((uy[0] - uv[0]) * tw, (uy[1] - uv[1]) * th)) / SS;
+            const auto s = tex->sample(float(uv[0]), float(uv[1]), rho > 1 ? float(std::log2(rho)) : 0.f);
+            color = {from_srgb(s[0]), from_srgb(s[1]), from_srgb(s[2])};   // albedo images are sRGB; shading happens in linear light
+          }
+          if (tri[0].has_color || item.unlit) out = color;  // unlit vertex colors / unlit materials
           else {
             V3 n = mix(tri[0].normal, tri[1].normal, tri[2].normal);
             V3 wp = mix(tri[0].world, tri[1].world, tri[2].world);
@@ -213,16 +230,20 @@ void render_png(const PreviewScene& sc, int w, int h, const std::string& path) {
     }
   }
   // Resolve supersampling in linear light, then sRGB-encode once.
+  std::vector<unsigned char> rgb8;
+  rgb8.reserve(size_t(w) * h * 3);
+  for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) for (int c = 0; c < 3; c++) {
+    double s = 0;
+    for (int dy = 0; dy < SS; dy++) for (int dx = 0; dx < SS; dx++) s += rgb[(size_t(y * SS + dy) * W + (x * SS + dx)) * 3 + c];
+    rgb8.push_back(static_cast<unsigned char>(std::lround(to_srgb(s / (SS * SS)) * 255)));
+  }
+  write_png_rgb(path, w, h, rgb8);
+}
+void write_png_rgb(const std::string& path, int w, int h, const std::vector<unsigned char>& rgb8) {
+  if (path.empty()) throw std::runtime_error("output path must not be empty");
   std::vector<unsigned char> raw;
   raw.reserve(size_t(h) * (size_t(w) * 3 + 1));
-  for (int y = 0; y < h; y++) {
-    raw.push_back(0);
-    for (int x = 0; x < w; x++) for (int c = 0; c < 3; c++) {
-      double s = 0;
-      for (int dy = 0; dy < SS; dy++) for (int dx = 0; dx < SS; dx++) s += rgb[(size_t(y * SS + dy) * W + (x * SS + dx)) * 3 + c];
-      raw.push_back(static_cast<unsigned char>(std::lround(to_srgb(s / (SS * SS)) * 255)));
-    }
-  }
+  for (int y = 0; y < h; y++) { raw.push_back(0); raw.insert(raw.end(), rgb8.begin() + size_t(y) * w * 3, rgb8.begin() + size_t(y + 1) * w * 3); }
   std::vector<unsigned char> png{137, 80, 78, 71, 13, 10, 26, 10}, ihdr;
   put32(ihdr, uint32_t(w)); put32(ihdr, uint32_t(h)); ihdr.insert(ihdr.end(), {8, 2, 0, 0, 0});
   chunk(png, "IHDR", ihdr); chunk(png, "sRGB", {0}); chunk(png, "IDAT", deflate_zlib(raw)); chunk(png, "IEND", {});

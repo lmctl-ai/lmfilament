@@ -28,5 +28,5 @@ run `./test.sh`.
 
 ## State (2026-10-24)
 
-Built and released on linux-x64/arm64, macos-arm64/x64. 35 examples, all pass `./test.sh`. Open: real Filament pixels, textures, IBL, more
+Built and released on linux-x64/arm64, macos-arm64/x64. 38 examples, all pass `./test.sh`. Open: real Filament pixels, KTX/cubemap textures, IBL, more
 upstream samples, Windows (see 05).

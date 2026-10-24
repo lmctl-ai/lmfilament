@@ -9,6 +9,7 @@
 | `cpp/main.cpp` | `Host` arenas, Filament glue, method registration, CLI |
 | `cpp/mesh.{hpp,cpp}` | procedural meshes, OBJ read/write, tangent frames |
 | `cpp/preview.{hpp,cpp}`, `cpp/deflate.hpp` | CPU preview rasterizer + PNG writer (deflate from lmcad, MIT) |
+| `cpp/texture.{hpp,cpp}`, `cpp/stb_image.h` | `Texture` images (8-bit RGBA), stb_image decode, mip chain and wrap/filter sampling for the preview |
 | `scripts/` | `build-filament.sh`, `build.sh`, `sync-sdk.sh` |
 | `test.sh` | pinned-hash, static-link, signature, example and negative checks |
 
@@ -65,10 +66,12 @@ Filament:
   scene() -> Scene
   sphere(float, int) -> Mesh
   text(string, float) -> Mesh
+  texture(int, int) -> Texture
+  texture_checker(int, int, float, float, float, float, float, float) -> Texture
+  texture_file(string) -> Texture
   triangle() -> Mesh
   tube_between(float, float, float, float, float, float, float) -> Mesh
   version() -> string
-
 Material:
   name() -> string
   package_size() -> int
@@ -76,7 +79,7 @@ Material:
   set_float(string, float) -> Material
   set_float3(string, float, float, float) -> Material
   set_float4(string, float, float, float, float) -> Material
-
+  set_texture(string, Texture) -> Material
 Mesh:
   compute_tangents() -> Mesh
   has_colors() -> bool
@@ -84,20 +87,17 @@ Mesh:
   save_obj(string) -> void
   triangle_count() -> int
   vertex_count() -> int
-
 Node:
   parent(Node) -> Node
   rotate(float, float, float) -> Node
   scale(float, float, float) -> Node
   translate(float, float, float) -> Node
-
 Part:
   parent(Node) -> Part
   rotate(float, float, float) -> Part
   scale(float, float, float) -> Part
   translate(float, float, float) -> Part
   visible(bool) -> Part
-
 Scene:
   add(Mesh, Material) -> Scene
   add_at(Mesh, Material, float, float, float) -> Scene
@@ -113,7 +113,19 @@ Scene:
   shadows(bool) -> Scene
   skybox(float, float, float) -> Scene
   sun(float) -> Scene
+Texture:
+  filter(string) -> Texture
+  height() -> int
+  pixel(int, int, float, float, float) -> Texture
+  repeat(float, float) -> Texture
+  save_png(string) -> void
+  width() -> int
+  wrap(string) -> Texture
 ```
+
+## Textures
+
+`TextureObj` (host arena, max 512 MiB of pixels per run) wraps `lmfilament::Texture`: 8-bit RGBA, row 0 = top = `v = 0`, filter (`linear` = trilinear, `nearest`), wrap (`repeat`, `clamp`, `mirror`) and a preview-only UV `repeat`. `Material.set_texture(name, tex)` only records the pair; `Scene.add*` checks the parameter exists, is a `sampler2d`, uploads a `filament::Texture` (RGBA8, or SRGB8_A8 for `albedo`/`baseColor`/`color`/`emissive`, with `GEN_MIPMAPPABLE` and generated mips), binds it with a `TextureSampler` built from the filter and wrap at that moment, and gives the preview a pointer to the albedo image. `Material.set_float` on a sampler name is an error. The preview treats a material whose source says `shadingModel : unlit` as unlit (albedo drawn as is). Primitive UVs: planes and box faces are upright when viewed from outside (top face with -Z up), spheres/cylinders/cones/capsules unroll with u growing left to right, cap rings are projected from above; `mesh_obj` flips `vt` v. Text meshes have no UVs, so texturing one is an error.
 
 ## Scene graph
 

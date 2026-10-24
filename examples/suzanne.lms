@@ -1,7 +1,7 @@
 # lmfilament port of upstream samples/suzanne.cpp
-# Suzanne with the texturedLit material. Texture parameters (albedo, ao, metallic, normal, roughness) are not in the schema yet, so the material renders with its defaults.
+# Suzanne with the texturedLit material. The five upstream monkey images (color, roughness, metallic, normal, ao) are bound to the albedo, roughness, metallic, normal and ao sampler parameters and uploaded to Filament; the CPU preview shades with the albedo image only.
 # Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/suzanne.lms
-# (reads third_party/filament/assets/models/monkey/monkey.obj: run from a clone after scripts/sync-filament.sh)
+# (reads third_party/filament/assets/models/monkey/{monkey.obj,color.png,roughness.png,metallic.png,normal.png,ao.png}: run from a clone after scripts/sync-filament.sh)
 # Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/suzanne.png).
 out = ARGV.len() > 0 ? ARGV[0] : "build/suzanne.dslb";
 mkdir("build");
@@ -9,6 +9,12 @@ mkdir("build/materials");
 mkdir("images");
 p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
 let mat = fil.material("texturedLit", "material {\n    name : LitTextured,\n    requires : [\n        uv0\n    ],\n    shadingModel : lit,\n    parameters : [\n        {\n            type : sampler2d,\n            name : albedo\n        },\n        {\n            type : sampler2d,\n            name : roughness\n        },\n        {\n            type : sampler2d,\n            name : metallic\n        },\n        {\n            type : float,\n            name : clearCoat\n        },\n        {\n            type : sampler2d,\n            name : normal\n        },\n        {\n            type : sampler2d,\n            name : ao\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        material.normal = texture(materialParams_normal, getUV0()).xyz * 2.0 - 1.0;\n        prepareMaterial(material);\n        material.baseColor = texture(materialParams_albedo, getUV0());\n        material.roughness = texture(materialParams_roughness, getUV0()).r;\n        material.metallic = texture(materialParams_metallic, getUV0()).r;\n        material.clearCoat = materialParams.clearCoat;\n        material.ambientOcclusion = texture(materialParams_ao, getUV0()).r;\n    }\n}\n");
+mat.set_float("clearCoat", 1.0);
+mat.set_texture("albedo", fil.texture_file("third_party/filament/assets/models/monkey/color.png"));
+mat.set_texture("roughness", fil.texture_file("third_party/filament/assets/models/monkey/roughness.png"));
+mat.set_texture("metallic", fil.texture_file("third_party/filament/assets/models/monkey/metallic.png"));
+mat.set_texture("normal", fil.texture_file("third_party/filament/assets/models/monkey/normal.png"));
+mat.set_texture("ao", fil.texture_file("third_party/filament/assets/models/monkey/ao.png"));
 let s = fil.scene();
 s.add_at(fil.mesh_obj("third_party/filament/assets/models/monkey/monkey.obj"), mat, 0.0, 0.0, -4.0);
 s.directional_light(0.9551, 0.8276, 0.7678, 110000.0, 0.7, -1.0, -0.8);

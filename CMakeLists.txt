@@ -43,7 +43,7 @@ foreach(n ${_names})
   list(APPEND FIL_LIBS "${${var}}")
 endforeach()
 
-add_executable(lmfilament cpp/main.cpp cpp/mesh.cpp cpp/preview.cpp)
+add_executable(lmfilament cpp/main.cpp cpp/mesh.cpp cpp/preview.cpp cpp/texture.cpp)
 target_compile_definitions(lmfilament PRIVATE LMFILAMENT_VERSION="${PROJECT_VERSION}" LMFILAMENT_FILAMENT_VERSION="${LMFILAMENT_FILAMENT_VERSION}")
 target_include_directories(lmfilament PRIVATE cpp "${CMAKE_CURRENT_BINARY_DIR}/generated")
 # The install prefix omits headers (utils/JobSystem.h, filament-matp, ...): use the pinned source tree.

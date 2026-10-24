@@ -1,0 +1,52 @@
+# Textured primitives (lmfilament)
+# One procedural brick texture on every primitive the host builds (box, sphere, cylinder, cone, capsule, tube, ring) and a checker floor, with a shadow map. The same lit material takes a different sampler2d image between `Scene.add` calls; the image is uploaded to Filament when the part is added.
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/textured-primitives.lms
+out = ARGV.len() > 0 ? ARGV[0] : "build/textured-primitives.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("texLit", "material {\n    name : TexLit,\n    shadingModel : lit,\n    requires : [\n        uv0\n    ],\n    parameters : [\n        {\n            type : sampler2d,\n            name : albedo\n        },\n        {\n            type : float,\n            name : rough\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor = texture(materialParams_albedo, getUV0());\n        material.roughness = materialParams.rough;\n    }\n}\n");
+mat.set_float("rough", 0.6);
+let n = 128;
+let brick = fil.texture(n, n);
+for (y in range(0, n)) {
+  for (x in range(0, n)) {
+    let row = y / 16;
+    let off = 0;
+    if (row % 2 == 1) { off = 16; }
+    let bx = (x + off) % 32;
+    let by = y % 16;
+    let r = 0.62 + 0.08 * sin(float(x * 7 + y * 3));
+    let g = 0.27 + 0.05 * sin(float(x * 5 + y * 11));
+    let b = 0.2;
+    if (bx < 2) { r = 0.78; g = 0.76; b = 0.7; }
+    if (by < 2) { r = 0.78; g = 0.76; b = 0.7; }
+    brick.pixel(x, y, r, g, b);
+  }
+}
+let floor_t = fil.texture_checker(128, 16, 0.3, 0.32, 0.38, 0.22, 0.24, 0.3).repeat(4.0, 4.0);
+let s = fil.scene();
+s.skybox(0.012, 0.013, 0.02);
+mat.set_float("rough", 0.9);
+mat.set_texture("albedo", floor_t);
+s.add_at(fil.plane(14.0, 14.0), mat, 0.0, -1.0, 0.0);
+mat.set_float("rough", 0.5);
+mat.set_texture("albedo", brick);
+s.add_part(fil.box(1.5, 1.5, 1.5), mat).rotate(0.0, 25.0, 0.0).translate(-3.3, -0.25, 0.0);
+s.add_at(fil.sphere(0.85, 48), mat, -1.1, -0.15, 0.4);
+s.add_at(fil.cylinder(0.7, 1.8, 48), mat, 1.0, -0.1, 0.0);
+s.add_at(fil.cone(0.8, 1.9, 48), mat, 2.9, -0.05, 0.4);
+s.add_at(fil.capsule(0.55, 0.8, 32), mat, -2.2, -0.2, -2.2);
+s.add(fil.tube_between(0.0, -1.0, -2.4, 0.0, 0.8, -2.4, 0.5), mat);
+s.add_part(fil.ring(0.5, 1.0, 96), mat).rotate(35.0, 0.0, 0.0).translate(2.0, 0.3, -2.3);
+s.shadows(true);
+s.directional_light(1.0, 1.0, 1.0, 110000.0, 0.5, -1.0, -0.6);
+s.camera(36.0, 0.0, 3.2, 8.6, 0.0, -0.2, 0.0);
+s.render_frames(1);
+s.render_png("images/textured-primitives.png", 800, 450);
+end _dsl_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok textured-primitives");

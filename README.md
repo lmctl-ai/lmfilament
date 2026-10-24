@@ -26,7 +26,7 @@ renderable/material-instance objects, procedural meshes, OBJ import/export, tang
 Not real: **Filament pixels**. A fully static binary cannot load a GPU driver, so Filament runs on its noop backend
 and `render_frames` drives the render loop without output. The pictures below come from lmfilament's own small CPU
 preview rasterizer (`Scene.render_png`): Lambert shading from the scene's lights, `baseColor` from the material
-parameters, unlit vertex colors, no textures, no shadows. It is a preview, not Filament's PBR renderer.
+parameters (or the albedo texture), unlit vertex colors and an optional shadow map. It is a preview, not Filament's PBR renderer.
 See [durable-memory/](durable-memory/).
 
 ## Examples
@@ -34,14 +34,14 @@ See [durable-memory/](durable-memory/).
 Each picture is produced by a self-contained `.lms` port of an upstream Filament C++ sample of a [Magnum Python example](https://doc.magnum.graphics/python/examples/), or of an [lmblender](https://github.com/lmctl-ai/lmblender) / [lmcad](https://github.com/lmctl-ai/lmcad) scene in
 [`examples/`](examples) (materials are inlined, so the `lmctl autorun` command in each caption runs from any
 directory and writes `images/<name>.png`). `examples/render-all.sh` regenerates all of them; the two Suzanne examples
-read the OBJ from a Filament checkout (`scripts/sync-filament.sh`).
+read the OBJ (and `suzanne`/`texturedquad` their PNGs) from a Filament checkout (`scripts/sync-filament.sh`).
 [`durable-memory/06-upstream-sample-map.md`](durable-memory/06-upstream-sample-map.md) says what each port keeps.
 `strobecolor`, `point_sprites` and `compile-sample-materials` produce no picture.
 
 | Vertex-colored triangle | Suzanne, PBR `aiDefaultMat` | Suzanne, `texturedLit` |
 | --- | --- | --- |
 | <img src="docs/images/hellotriangle.png" width="290"> | <img src="docs/images/hellopbr.png" width="290"> | <img src="docs/images/suzanne.png" width="290"> |
-| Upstream hellotriangle: unlit `bakedColor` material<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/hellotriangle.lms` | Metallic 1, roughness 0.4, sun light (needs a clone for the OBJ)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/hellopbr.lms` | Same scene with the textured material (textures not wired yet; needs a clone)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/suzanne.lms` |
+| Upstream hellotriangle: unlit `bakedColor` material<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/hellotriangle.lms` | Metallic 1, roughness 0.4, sun light (needs a clone for the OBJ)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/hellopbr.lms` | Same scene with the textured material (five monkey images bound to its samplers; the preview shades with the albedo; needs a clone)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/suzanne.lms` |
 
 | Primitives | Primitives, using a scene graph | Model viewer |
 | --- | --- | --- |
@@ -61,7 +61,7 @@ read the OBJ from a Filament checkout (`scripts/sync-filament.sh`).
 | Material sandbox | Textured quad | Heightfield plane |
 | --- | --- | --- |
 | <img src="docs/images/material_sandbox.png" width="290"> | <img src="docs/images/texturedquad.png" width="290"> | <img src="docs/images/heightfield.png" width="290"> |
-| Nine sandbox materials on spheres (lit, fade, transparent, refraction, cloth, ...)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/material_sandbox.lms` | `bakedTexture` quad (texture parameter not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texturedquad.lms` | `heightfield` material on a quad (height texture not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/heightfield.lms` |
+| Nine sandbox materials on spheres (lit, fade, transparent, refraction, cloth, ...)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/material_sandbox.lms` | `bakedTexture` quad with upstream's Moss_01 image (needs a clone for the PNG)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texturedquad.lms` | `heightfield` material on a quad (height texture not wired yet)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/heightfield.lms` |
 
 | Caffeine molecule | Water molecule | Buckminsterfullerene C60 |
 | --- | --- | --- |
@@ -101,6 +101,16 @@ The four 10 s clips on the [lmctl.com](https://lmctl.com) homepage, one per leve
 | --- | --- |
 | <img src="docs/images/level-3-hands-off-lead.gif" width="440"> | <img src="docs/images/level-4-automation.gif" width="440"> |
 | A requirement and its checklist enter; a reviewed result returns<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/level-3-hands-off-lead.lms`<br>[MP4](docs/videos/level-3-hands-off-lead.mp4) | A brainstorm becomes a Work, Review, QA and Acceptance pipeline<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/level-4-automation.lms`<br>[MP4](docs/videos/level-4-automation.mp4) |
+
+
+### Textures
+
+`Filament.texture(w, h)`, `texture_checker(...)` and `texture_file(path)` (PNG, JPEG, BMP, TGA) create images; `Texture.pixel`, `filter`, `wrap`, `repeat` and `save_png` shape and save them; `Material.set_texture("albedo", tex)` binds one to a `sampler2d` parameter. The image is uploaded to Filament (noop backend) when the material is added to a scene with `Scene.add`/`add_at`/`add_part`, so set filtering and wrapping before that. The CPU preview samples the albedo image (the sampler named `albedo`, `baseColor`, `color` or `emissive`, else the first one) with mip-mapped trilinear or nearest filtering; other maps (roughness, metallic, normal, ao) are uploaded but not used for shading. Meshes carry UVs with `v = 0` at the top row of the image (OBJ `vt` is flipped on import).
+
+| Textured planet | Textured primitives | Texture filtering and wrapping |
+| --- | --- | --- |
+| <img src="docs/images/textured-planet.gif" width="290"> | <img src="docs/images/textured-primitives.png" width="290"> | <img src="docs/images/texture-modes.png" width="290"> |
+| A generated Earth map and a cratered moon on lit spheres, 36-frame turn (GIF via ffmpeg)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/textured-planet.lms` | One brick image on box, sphere, cylinder, cone, capsule, tube and ring, with shadows<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/textured-primitives.lms` | Linear vs nearest, mip filtering at a grazing angle, repeat, clamp and mirror<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texture-modes.lms` |
 
 ## Build
 

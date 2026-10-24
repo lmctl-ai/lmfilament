@@ -9,12 +9,13 @@
 #include <stdexcept>
 namespace lmfilament {
 namespace {
-void quad(Mesh& m, const float p[4][3], const float n[3]) {
+void quad(Mesh& m, const float p[4][3], const float n[3], const float (*uv_in)[2] = nullptr) {
   const float a[3] = {p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]}, b[3] = {p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]};
   const float c[3] = {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
   const bool ccw = c[0] * n[0] + c[1] * n[1] + c[2] * n[2] > 0;  // counter-clockwise seen from outside
   const uint32_t base = static_cast<uint32_t>(m.vertex_count());
-  static const float uv[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+  static const float uv_default[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+  const float(*uv)[2] = uv_in ? uv_in : uv_default;
   for (int i = 0; i < 4; i++) {
     m.positions.insert(m.positions.end(), p[i], p[i] + 3);
     m.normals.insert(m.normals.end(), n, n + 3);
@@ -39,7 +40,18 @@ Mesh make_box(float x, float y, float z) {
       p[i][u] = su[i] * h[u];
       p[i][v] = sv[i] * h[v];
     }
-    quad(m, p, nn);
+    // Upright image seen from outside: up is +Y on the sides and -Z on the top and bottom faces, right = up x normal, v = 0 at the top edge.
+    const float up[3] = {0, (n == 1) ? 0.f : 1.f, (n == 1) ? -1.f : 0.f};
+    const float right[3] = {up[1] * nn[2] - up[2] * nn[1], up[2] * nn[0] - up[0] * nn[2], up[0] * nn[1] - up[1] * nn[0]};
+    float uv[4][2];
+    for (int i = 0; i < 4; i++) {
+      float ru = 0, uu = 0;
+      for (int k = 0; k < 3; k++) { ru += p[i][k] * right[k]; uu += p[i][k] * up[k]; }
+      float rext = 0, uext = 0;
+      for (int k = 0; k < 3; k++) { rext += std::fabs(right[k]) * 2 * h[k]; uext += std::fabs(up[k]) * 2 * h[k]; }
+      uv[i][0] = ru / rext + 0.5f; uv[i][1] = 0.5f - uu / uext;
+    }
+    quad(m, p, nn, uv);
   }
   return m;
 }
@@ -53,7 +65,7 @@ Mesh make_sphere(float radius, int segments) {
       const float nx = std::sin(phi) * std::cos(theta), ny = std::cos(phi), nz = std::sin(phi) * std::sin(theta);
       m.positions.insert(m.positions.end(), {radius * nx, radius * ny, radius * nz});
       m.normals.insert(m.normals.end(), {nx, ny, nz});
-      m.uvs.insert(m.uvs.end(), {u, v});
+      m.uvs.insert(m.uvs.end(), {1.f - u, v});   // u grows left to right as seen from outside
     }
   }
   for (int r = 0; r < rings; r++)
@@ -68,7 +80,9 @@ Mesh make_plane(float width, float depth) {
   const float hx = width / 2, hz = depth / 2;
   const float p[4][3] = {{-hx, 0, hz}, {hx, 0, hz}, {hx, 0, -hz}, {-hx, 0, -hz}};
   const float n[3] = {0, 1, 0};
-  quad(m, p, n);
+  // Seen from above with -Z as "up" the image is upright: v = 0 at the far (-Z) edge.
+  static const float uv[4][2] = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
+  quad(m, p, n, uv);
   return m;
 }
 Mesh make_triangle() {
@@ -95,7 +109,7 @@ Mesh load_obj(const std::string& path) {
   while (std::getline(in, line)) {
     std::istringstream ls(line); std::string tag; ls >> tag;
     if (tag == "v") { float x, y, z; ls >> x >> y >> z; v.insert(v.end(), {x, y, z}); }
-    else if (tag == "vt") { float a, b = 0; ls >> a >> b; vt.insert(vt.end(), {a, b}); }
+    else if (tag == "vt") { float a, b = 0; ls >> a >> b; vt.insert(vt.end(), {a, 1.f - b}); }   // OBJ v is up; image rows count down from v = 0
     else if (tag == "vn") { float x, y, z; ls >> x >> y >> z; vn.insert(vn.end(), {x, y, z}); }
     else if (tag == "f") {
       std::vector<uint32_t> face; std::string tok;
@@ -135,12 +149,16 @@ struct Pt { float r, y, nr, ny; };  // profile point: radius, height, normal (ra
 // Revolve profile segments around +Y. Triangles are wound so the geometric normal agrees with the vertex normals.
 void revolve(Mesh& m, const std::vector<std::pair<Pt, Pt>>& segs, int segments) {
   const float two_pi = 2 * float(M_PI);
-  auto vert = [&](const Pt& p, int k, float v) {
+  float ymin = 1e30f, ymax = -1e30f, rmax = 1e-6f;
+  for (const auto& [A, B] : segs) for (const Pt* q : {&A, &B}) { ymin = std::min(ymin, q->y); ymax = std::max(ymax, q->y); rmax = std::max(rmax, q->r); }
+  // Side points unroll to (1 - angle / 2pi, top-to-bottom height); cap rings (constant y) are projected from above.
+  auto vert = [&](const Pt& p, int k, bool cap) {
     const float a = two_pi * float(k) / segments, ca = std::cos(a), sa = std::sin(a);
     m.positions.insert(m.positions.end(), {p.r * ca, p.y, p.r * sa});
     float n[3] = {p.nr * ca, p.ny, p.nr * sa};
     m.normals.insert(m.normals.end(), n, n + 3);
-    m.uvs.insert(m.uvs.end(), {float(k) / segments, v});
+    if (cap) m.uvs.insert(m.uvs.end(), {0.5f + 0.5f * p.r / rmax * ca, 0.5f + 0.5f * p.r / rmax * sa * (p.ny > 0 ? 1.f : -1.f)});
+    else m.uvs.insert(m.uvs.end(), {1.f - float(k) / segments, ymax > ymin ? (ymax - p.y) / (ymax - ymin) : 0.f});
     return uint32_t(m.vertex_count() - 1);
   };
   auto tri = [&](uint32_t a, uint32_t b, uint32_t c) {
@@ -155,7 +173,8 @@ void revolve(Mesh& m, const std::vector<std::pair<Pt, Pt>>& segs, int segments) 
   };
   for (const auto& [A, B] : segs)
     for (int k = 0; k < segments; k++) {
-      const uint32_t a0 = vert(A, k, 0), a1 = vert(A, k + 1, 0), b0 = vert(B, k, 1), b1 = vert(B, k + 1, 1);
+      const bool cap = A.y == B.y;
+      const uint32_t a0 = vert(A, k, cap), a1 = vert(A, k + 1, cap), b0 = vert(B, k, cap), b1 = vert(B, k + 1, cap);
       tri(a0, b0, a1); tri(a1, b0, b1);
     }
 }
@@ -261,7 +280,7 @@ Mesh make_icosphere(float radius, int subdivisions) {
   for (auto& p : v) {
     m.positions.insert(m.positions.end(), {p[0] * radius, p[1] * radius, p[2] * radius});
     m.normals.insert(m.normals.end(), {p[0], p[1], p[2]});
-    m.uvs.insert(m.uvs.end(), {0.5f + std::atan2(p[2], p[0]) / (2 * float(M_PI)), 0.5f - std::asin(std::clamp(p[1], -1.f, 1.f)) / float(M_PI)});
+    m.uvs.insert(m.uvs.end(), {0.5f - std::atan2(p[2], p[0]) / (2 * float(M_PI)), 0.5f - std::asin(std::clamp(p[1], -1.f, 1.f)) / float(M_PI)});
   }
   for (auto& tr : f) m.indices.insert(m.indices.end(), tr.begin(), tr.end());
   return m;
@@ -344,7 +363,7 @@ void write_obj(const std::string& path, const Mesh& m) {
   if (!out) throw std::runtime_error("cannot open " + path);
   out << "# lmfilament\n";
   for (size_t i = 0; i < m.vertex_count(); i++) out << "v " << m.positions[3 * i] << ' ' << m.positions[3 * i + 1] << ' ' << m.positions[3 * i + 2] << '\n';
-  for (size_t i = 0; i < m.vertex_count(); i++) out << "vt " << m.uvs[2 * i] << ' ' << m.uvs[2 * i + 1] << '\n';
+  for (size_t i = 0; i < m.vertex_count(); i++) out << "vt " << m.uvs[2 * i] << ' ' << 1.f - m.uvs[2 * i + 1] << '\n';
   for (size_t i = 0; i < m.vertex_count(); i++) out << "vn " << m.normals[3 * i] << ' ' << m.normals[3 * i + 1] << ' ' << m.normals[3 * i + 2] << '\n';
   for (size_t t = 0; t < m.triangle_count(); t++) {
     out << 'f';

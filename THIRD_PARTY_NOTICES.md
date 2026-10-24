@@ -11,6 +11,11 @@ lmcad (MIT)
 -----------
 `cpp/deflate.hpp` and the PNG chunk writer in `cpp/preview.cpp` are adapted from lmcad (Lattice Systems LLC, MIT).
 
+stb_image 2.30 (public domain / MIT)
+-------------------------------------
+`cpp/stb_image.h` (https://github.com/nothings/stb, Sean Barrett) is vendored unmodified and decodes PNG, JPEG, BMP and
+TGA textures. It is in the public domain (alternatively MIT); no notice is required.
+
 Google Filament 1.78.1 (pinned by `filament.lock`)
 --------------------------------------------------
 The executable statically links the Filament engine, filamat (material compiler), filament-matp, geometry,
