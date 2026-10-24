@@ -48,18 +48,71 @@ requires another attribute (e.g. `uv1`, `color` on a mesh without colors) is not
 `SceneObj::preview` (a `PreviewScene`) mirrors what `add`, `skybox`, `camera` and the light methods give Filament, so
 `render_png` needs no Filament readback (the noop backend has nothing to read).
 
-## Schema v0.4 surface
+## Schema surface (generated from `build/host/lmfilament --dsl-signatures`)
 
 ```
-Filament: version() material(name, source) material_file(path) box(x,y,z) sphere(r, segments)
-          plane(w, d) cylinder(r,h,seg) cone(r,h,seg) capsule(r,len,seg) icosphere(r,sub) text(s,h) tube_between(x1,y1,z1,x2,y2,z2,r) ring(inner,outer,seg)
-          triangle() mesh_obj(path) scene()
-Material: name() package_size() save(path) set_float(n,v) set_float3(n,x,y,z) set_float4(n,x,y,z,w)
-Mesh:     vertex_count() triangle_count() has_tangents() has_colors() compute_tangents() save_obj(path)
-Scene:    add(mesh, mat) add_at(mesh, mat, x,y,z) add_part(mesh, mat)->Part node()->Node skybox(r,g,b) camera(fov,ex,ey,ez,tx,ty,tz)
-          shadows(bool) sun(intensity) directional_light(r,g,b,intensity,dx,dy,dz) point_light(x,y,z,intensity,falloff)
-          render_frames(n) render_png(path,w,h) renderable_count() light_count()
-Node/Part: translate(x,y,z) rotate(rx,ry,rz) scale(sx,sy,sz) parent(Node)   Part also: visible(bool)   (Euler degrees, T*Rz*Ry*Rx*S)
+Filament:
+  box(float, float, float) -> Mesh
+  capsule(float, float, int) -> Mesh
+  cone(float, float, int) -> Mesh
+  cylinder(float, float, int) -> Mesh
+  icosphere(float, int) -> Mesh
+  material(string, string) -> Material
+  material_file(string) -> Material
+  mesh_obj(string) -> Mesh
+  plane(float, float) -> Mesh
+  ring(float, float, int) -> Mesh
+  scene() -> Scene
+  sphere(float, int) -> Mesh
+  text(string, float) -> Mesh
+  triangle() -> Mesh
+  tube_between(float, float, float, float, float, float, float) -> Mesh
+  version() -> string
+
+Material:
+  name() -> string
+  package_size() -> int
+  save(string) -> void
+  set_float(string, float) -> Material
+  set_float3(string, float, float, float) -> Material
+  set_float4(string, float, float, float, float) -> Material
+
+Mesh:
+  compute_tangents() -> Mesh
+  has_colors() -> bool
+  has_tangents() -> bool
+  save_obj(string) -> void
+  triangle_count() -> int
+  vertex_count() -> int
+
+Node:
+  parent(Node) -> Node
+  rotate(float, float, float) -> Node
+  scale(float, float, float) -> Node
+  translate(float, float, float) -> Node
+
+Part:
+  parent(Node) -> Part
+  rotate(float, float, float) -> Part
+  scale(float, float, float) -> Part
+  translate(float, float, float) -> Part
+  visible(bool) -> Part
+
+Scene:
+  add(Mesh, Material) -> Scene
+  add_at(Mesh, Material, float, float, float) -> Scene
+  add_part(Mesh, Material) -> Part
+  camera(float, float, float, float, float, float, float) -> Scene
+  directional_light(float, float, float, float, float, float, float) -> Scene
+  light_count() -> int
+  node() -> Node
+  point_light(float, float, float, float, float) -> Scene
+  render_frames(int) -> int
+  render_png(string, int, int) -> void
+  renderable_count() -> int
+  shadows(bool) -> Scene
+  skybox(float, float, float) -> Scene
+  sun(float) -> Scene
 ```
 
 ## Scene graph

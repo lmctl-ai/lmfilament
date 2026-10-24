@@ -11,7 +11,7 @@
 4. **Point/line primitives, vertex attributes beyond tangents/uv0/color.**
 5. **IBL.** `libibl` (cmgen) is built; an `IndirectLight` + cubemap API is not exposed.
 6. **Windows.** No Windows build: Filament builds with MSVC/clang-cl, and this project's static-link recipe
-   (libc++, `c++abi`) is Linux/macOS-only. macOS (arm64, x64) is in CI but unverified locally.
+   (libc++, `c++abi`) is Linux/macOS-only. linux-x64/arm64 and macos-arm64/x64 are built, tested and released by CI.
 7. **Packaging.** License is MIT (as lmhtml/lmcad/lmplot; compatible with Filament's Apache-2.0 and gnuplot's
    GPL-compatible terms). Releases ship `LICENSE`, `THIRD_PARTY_NOTICES.md`, `FILAMENT-LICENSE`, and on Linux
    relink objects for the statically linked glibc (LGPL). See `07-ci-and-release.md`.

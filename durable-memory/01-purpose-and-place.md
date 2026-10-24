@@ -28,6 +28,6 @@ backend only**. What is real:
 What is not: Filament pixels. `Scene.render_frames(n)` drives `beginFrame/render/endFrame` against the noop driver
 and returns the number of frames drawn. Pictures come from `Scene.render_png(path, w, h)`, lmfilament's own CPU preview rasterizer (`cpp/preview.cpp`):
 z-buffer, near-plane clipping, 2x2 supersampling in linear light, Lambert shading from the scene's lights,
-`baseColor`/`color` material parameter as albedo, unlit per-vertex colors, mild tone map. No textures, shadows,
-specular or PBR; light units are mapped to a fixed preview exposure. It exists for documentation and smoke tests;
+`baseColor`/`color` material parameter as albedo, unlit per-vertex colors, mild tone map, an optional shadow map for the first
+directional light (`Scene.shadows(true)`). No textures, specular or PBR; light units are mapped to a fixed preview exposure. It exists for documentation and smoke tests;
 it is not Filament's renderer. See `05-open-items.md`.

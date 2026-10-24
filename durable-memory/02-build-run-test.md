@@ -14,13 +14,15 @@ tar -xf LLVM-19.1.7-Linux-X64.tar.xz --strip-components=1
 Both scripts honour `LLVM=/path/to/llvm`.
 
 ```sh
-git clone --depth 1 https://github.com/google/filament.git third_party/filament   # at the commit in filament.lock
+scripts/sync-filament.sh      # shallow checkout of the commit pinned in filament.lock into third_party/filament
 scripts/build-filament.sh      # ~10 min on 4 cores; static libs in build/filament-build
 scripts/build.sh               # configures + links build/host/lmfilament (static)
 ./test.sh                      # signatures, static link, every example, a negative test
 ```
 
-Run an example from the repo root (asset paths are relative): `lmscript examples/hellopbr.lms`.
+Run an example with `PATH=$PWD/build/host:$PATH lmscript examples/hellopbr.lms` (materials are inlined, so most examples run from any directory;
+`hellopbr` and `suzanne` read `third_party/filament/assets/models/monkey/monkey.obj`, so run those from the repo root). `examples/render-all.sh`
+re-renders every README picture and copies it to `docs/images/` (`docs/videos/` for MP4).
 Run a compiled script directly: `build/host/lmfilament --dsl file.dslb`.
 
 ## Filament configuration (scripts/build-filament.sh)
