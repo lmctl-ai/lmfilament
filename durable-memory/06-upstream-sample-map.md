@@ -27,6 +27,11 @@
 | lmblender `cornell-box` | `cornell-box.lms` | no global illumination (preview shading only) |
 | lmblender `saturn-rings` | `saturn-rings.lms` | `fil.ring` bands, no planet shadow |
 | lmcad `truss-bridge` | `truss-bridge.lms` | 3D part only; member colour/radius from the closed-form forces |
+| magnum-examples `shadows` | `shadows.lms` | preview shadow map (`scene.shadows(true)`) instead of Filament's cascaded maps |
+| magnum-examples `multidraw` | `multidraw.lms` | 180 meshes, each its own renderable |
+| magnum-examples `cubemap` | `cubemap.lms` | six-face room + spheres; no reflections |
+| magnum-examples `bullet` | `bullet.lms` | closed-form ballistics, no rigid-body engine |
+| magnum-examples `fluidsimulation3d` / `fluidsimulation2d` | `fluidsimulation3d.lms`, `fluidsimulation2d.lms` | streamline visualisation, no solver |
 
 Each example's header comment states what is omitted. Every example prints `ok NAME` on success;
 `test.sh` requires that line.

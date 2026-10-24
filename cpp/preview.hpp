@@ -15,6 +15,7 @@ struct PreviewLight { bool directional = true; std::array<float, 3> color{1, 1, 
 struct PreviewScene {
   std::vector<PreviewItem> items;
   std::vector<XForm> nodes;
+  bool shadows = false;   // shadow map for the first directional light
   std::vector<PreviewLight> lights;
   std::array<float, 3> sky{0.05f, 0.06f, 0.09f};
   float fov_degrees = 45;

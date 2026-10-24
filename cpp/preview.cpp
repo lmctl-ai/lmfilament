@@ -73,6 +73,57 @@ void render_png(const PreviewScene& sc, int w, int h, const std::string& path) {
   const V3 up = cross(right, fwd);
   const double focal = 0.5 * H / std::tan(sc.fov_degrees * M_PI / 360.0), near = 0.05;
   const bool headlight = sc.lights.empty();
+  // Optional shadow map (first directional light): orthographic depth pass over all world-space triangles, 2048^2, 3x3 PCF.
+  const PreviewLight* caster = nullptr;
+  for (const auto& L : sc.lights) if (L.directional) { caster = &L; break; }
+  struct ShadowMap { bool on = false; int R = 0; std::vector<float> d; V3 r{}, u{}, f{}; double x0 = 0, y0 = 0, s = 0, texel = 0; } sm;
+  if (sc.shadows && caster) {
+    sm.f = norm(V3{caster->vec[0], caster->vec[1], caster->vec[2]});
+    const V3 ref = std::fabs(sm.f[1]) > 0.99 ? V3{1, 0, 0} : V3{0, 1, 0};
+    sm.r = norm(cross(sm.f, ref)); sm.u = cross(sm.r, sm.f);
+    std::vector<V3> lp; std::vector<uint32_t> li;
+    double mnx = 1e30, mny = 1e30, mxx = -1e30, mxy = -1e30;
+    for (const auto& item : sc.items) {
+      const M4 Wm = world(sc.nodes, item.xf); const uint32_t base = uint32_t(lp.size());
+      for (size_t i = 0; i < item.mesh.vertex_count(); i++) {
+        const double x = item.mesh.positions[3 * i], y = item.mesh.positions[3 * i + 1], z = item.mesh.positions[3 * i + 2];
+        const V3 w{Wm[0] * x + Wm[1] * y + Wm[2] * z + Wm[3], Wm[4] * x + Wm[5] * y + Wm[6] * z + Wm[7], Wm[8] * x + Wm[9] * y + Wm[10] * z + Wm[11]};
+        const V3 q{dot(w, sm.r), dot(w, sm.u), dot(w, sm.f)}; lp.push_back(q);
+        mnx = std::min(mnx, q[0]); mxx = std::max(mxx, q[0]); mny = std::min(mny, q[1]); mxy = std::max(mxy, q[1]);
+      }
+      for (uint32_t i : item.mesh.indices) li.push_back(base + i);
+    }
+    if (!lp.empty()) {
+      sm.on = true; sm.R = 2048; sm.d.assign(size_t(sm.R) * sm.R, std::numeric_limits<float>::infinity());
+      const double ext = std::max(mxx - mnx, mxy - mny) * 1.02 + 1e-4;
+      sm.x0 = mnx - (ext - (mxx - mnx)) / 2; sm.y0 = mny - (ext - (mxy - mny)) / 2; sm.s = sm.R / ext; sm.texel = ext / sm.R;
+      for (size_t t = 0; t + 2 < li.size(); t += 3) {
+        const V3 v[3] = {lp[li[t]], lp[li[t + 1]], lp[li[t + 2]]}; double X[3], Y[3];
+        for (int k = 0; k < 3; k++) { X[k] = (v[k][0] - sm.x0) * sm.s; Y[k] = (v[k][1] - sm.y0) * sm.s; }
+        const double ar = (X[1] - X[0]) * (Y[2] - Y[0]) - (Y[1] - Y[0]) * (X[2] - X[0]); if (std::abs(ar) < 1e-12) continue;
+        const int ax = std::max(0, int(std::floor(std::min({X[0], X[1], X[2]})))), bx = std::min(sm.R - 1, int(std::ceil(std::max({X[0], X[1], X[2]}))));
+        const int ay = std::max(0, int(std::floor(std::min({Y[0], Y[1], Y[2]})))), by = std::min(sm.R - 1, int(std::ceil(std::max({Y[0], Y[1], Y[2]}))));
+        for (int y = ay; y <= by; y++) for (int x = ax; x <= bx; x++) {
+          const double px = x + 0.5, py = y + 0.5;
+          const double w0 = ((X[1] - px) * (Y[2] - py) - (Y[1] - py) * (X[2] - px)) / ar, w1 = ((X[2] - px) * (Y[0] - py) - (Y[2] - py) * (X[0] - px)) / ar, w2 = 1 - w0 - w1;
+          if (w0 < -1e-5 || w1 < -1e-5 || w2 < -1e-5) continue;
+          const float z = float(w0 * v[0][2] + w1 * v[1][2] + w2 * v[2][2]); float& m = sm.d[size_t(y) * sm.R + x]; if (z < m) m = z;
+        }
+      }
+    }
+  }
+  auto shadow_at = [&](const V3& pos, double ndotl) -> double {
+    if (!sm.on) return 1.0;
+    const double lx = (dot(pos, sm.r) - sm.x0) * sm.s, ly = (dot(pos, sm.u) - sm.y0) * sm.s, lz = dot(pos, sm.f);
+    const double bias = sm.texel * (2.5 + 14.0 * (1.0 - std::clamp(ndotl, 0.0, 1.0)));
+    const int cx = int(std::floor(lx)), cy = int(std::floor(ly)); double s = 0;
+    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+      const int x = cx + i, y = cy + j;
+      if (x < 0 || y < 0 || x >= sm.R || y >= sm.R) { s += 1; continue; }
+      s += (lz - bias <= sm.d[size_t(y) * sm.R + x]) ? 1.0 : 0.0;
+    }
+    return s / 9.0;
+  };
 
   for (const auto& item : sc.items) {
     const auto& m = item.mesh;
@@ -144,7 +195,7 @@ void render_png(const PreviewScene& sc, int w, int h, const std::string& path) {
             auto add = [&](V3 l, double k, const std::array<float, 3>& lc) { const double d = std::max(0.0, dot(n, l)) * k; for (int i = 0; i < 3; i++) lit[i] += d * lc[i]; };
             if (headlight) add(toeye, 0.85, {1, 1, 1});
             for (const auto& L : sc.lights) {
-              if (L.directional) add(norm({-L.vec[0], -L.vec[1], -L.vec[2]}), std::min(1.5, L.intensity / 110000.0), L.color);
+              if (L.directional) { const V3 tl = norm({-L.vec[0], -L.vec[1], -L.vec[2]}); const double nl = dot(n, tl); add(tl, std::min(1.5, L.intensity / 110000.0) * (&L == caster && nl > 0 ? shadow_at(wp, nl) : 1.0), L.color); }
               else {
                 const V3 d{L.vec[0] - wp[0], L.vec[1] - wp[1], L.vec[2] - wp[2]};
                 const double r2 = std::max(1e-4, dot(d, d));

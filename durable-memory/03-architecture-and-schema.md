@@ -57,7 +57,7 @@ Filament: version() material(name, source) material_file(path) box(x,y,z) sphere
 Material: name() package_size() save(path) set_float(n,v) set_float3(n,x,y,z) set_float4(n,x,y,z,w)
 Mesh:     vertex_count() triangle_count() has_tangents() has_colors() compute_tangents() save_obj(path)
 Scene:    add(mesh, mat) add_at(mesh, mat, x,y,z) add_part(mesh, mat)->Part node()->Node skybox(r,g,b) camera(fov,ex,ey,ez,tx,ty,tz)
-          sun(intensity) directional_light(r,g,b,intensity,dx,dy,dz) point_light(x,y,z,intensity,falloff)
+          shadows(bool) sun(intensity) directional_light(r,g,b,intensity,dx,dy,dz) point_light(x,y,z,intensity,falloff)
           render_frames(n) render_png(path,w,h) renderable_count() light_count()
 Node/Part: translate(x,y,z) rotate(rx,ry,rz) scale(sx,sy,sz) parent(Node)   (Euler degrees, T*Rz*Ry*Rx*S)
 ```
@@ -69,6 +69,9 @@ Node/Part: translate(x,y,z) rotate(rx,ry,rz) scale(sx,sy,sz) parent(Node)   (Eul
 `XForm` per part/node (`PreviewScene::nodes`, parent = node index) and composes the same chain; `XForm` is the source of truth and
 `sync()` pushes it into Filament after every setter. Normals use the cofactor matrix (non-uniform scale safe). Cycles are rejected.
 Material parameters are snapshotted at `add_part`, so one `Material` can be re-colored between adds.
+
+`Scene.shadows(true)` makes the preview renderer build a 2048x2048 orthographic shadow map for the first directional light
+(slope-scaled bias, 3x3 PCF) over all world-space triangles; it only darkens that light's contribution. Filament itself is unaffected.
 
 To add an API: edit the schema, register the matching method with identical parameter/return type
 strings, rebuild, and check `diff <(lmscript --dsl-signatures schema/lmfilament.dsl.json) <(build/host/lmfilament --dsl-signatures)`

@@ -376,6 +376,7 @@ void register_host(dslvm::Registry& r, Host& h) {
     s->scene->addEntity(e); s->entities.push_back(e); s->lights++;
     return Value::object("Scene", p);
   });
+  checked_method(r, "Scene", "shadows", {"bool"}, "Scene", [](void* p, Args& a) { self<SceneObj>(p)->preview.shadows = a[0].b; return Value::object("Scene", p); });
   checked_method(r, "Scene", "sun", {"float"}, "Scene", [](void* p, Args& a) {
     auto* s = self<SceneObj>(p);
     if (!(a[0].f >= 0)) throw dslvm::Error("sun intensity must not be negative");
