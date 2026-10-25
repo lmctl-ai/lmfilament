@@ -1,0 +1,24 @@
+# lmfilament port of upstream samples/shadowtest.cpp
+# A ground plane with the groundShadow material and a shadow-casting sun.
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/shadowtest.lms
+# Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/shadowtest.png).
+out = ARGV.len() > 0 ? ARGV[0] : "build/shadowtest.dslb";
+mkdir("build");
+mkdir("build/materials");
+mkdir("images");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let ground = fil.material("groundShadow", "material {\n    name : GroundShadow,\n    blending : transparent,\n    shadingModel : unlit,\n    shadowMultiplier : true,\n    parameters : [\n        {\n            type : float,\n            name : strength\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor = vec4(0.0, 0.0, 0.0, materialParams.strength);\n    }\n}\n");
+let s = fil.scene();
+s.skybox(0.5, 0.75, 1.0);
+s.add_at(fil.plane(20.0, 20.0), ground, 0.0, -1.0, 0.0);
+s.add_at(fil.sphere(1.0, 24), fil.material("sandboxLit", "material {\n    name : LitOpaque,\n    shadingModel : lit,\n    apiLevel : 2,\n    parameters : [\n        {\n            type : float3,\n            name : baseColor\n        },\n        {\n            type : float,\n            name : roughness\n        },\n        {\n            type : float,\n            name : metallic\n        },\n        {\n            type : float,\n            name : reflectance\n        },\n        {\n            type : float,\n            name : secondRoughness\n        },\n        {\n            type : float,\n            name : secondRoughnessWeight\n        },\n        {\n            type : float3,\n            name : sheenColor\n        },\n        {\n            type : float,\n            name : sheenRoughness\n        },\n        {\n            type : float,\n            name : iridescence\n        },\n        {\n            type : float,\n            name : iridescenceIor\n        },\n        {\n            type : float,\n            name : iridescenceThickness\n        },\n        {\n            type : float,\n            name : clearCoat\n        },\n        {\n            type : float,\n            name : clearCoatRoughness\n        },\n        {\n            type : float,\n            name : anisotropy\n        },\n        {\n            type : float4,\n            name : emissive\n        }\n    ],\n    specularAntiAliasing : true\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = materialParams.baseColor;\n        material.roughness = materialParams.roughness;\n        material.metallic = materialParams.metallic;\n        material.reflectance = materialParams.reflectance;\n        material.secondRoughness = materialParams.secondRoughness;\n        material.secondRoughnessWeight = materialParams.secondRoughnessWeight;\n        material.sheenColor = materialParams.sheenColor;\n        material.sheenRoughness = materialParams.sheenRoughness;\n        material.iridescence = materialParams.iridescence;\n        material.iridescenceIor = materialParams.iridescenceIor;\n        material.iridescenceThickness = materialParams.iridescenceThickness;\n        material.clearCoat = materialParams.clearCoat;\n        material.clearCoatRoughness = materialParams.clearCoatRoughness;\n        material.anisotropy = materialParams.anisotropy;\n        material.emissive = materialParams.emissive;\n    }\n}\n").set_float3("baseColor", 0.8, 0.2, 0.2), 0.0, 0.0, 0.0);
+s.directional_light(0.9551, 0.8276, 0.7678, 110000.0, 0.7, -1.0, -0.8);
+s.camera(45.0, 0.0, 2.0, 8.0, 0.0, 0.0, 0.0);
+s.render_frames(2);
+s.render_png("images/shadowtest.png", 800, 600);
+end _lmcode_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok shadowtest");

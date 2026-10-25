@@ -1,0 +1,22 @@
+# lmfilament port of upstream samples/viewtest.cpp
+# Triangle on a pure blue skybox (the upstream sample renders it through several views).
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/viewtest.lms
+# Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/viewtest.png).
+out = ARGV.len() > 0 ? ARGV[0] : "build/viewtest.dslb";
+mkdir("build");
+mkdir("build/materials");
+mkdir("images");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("bakedColor", "material {\n    name : BakedColor,\n    requires : [\n        color\n    ],\n    shadingModel : unlit,\n    culling : none,\n    featureLevel : 0\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor = getColor();\n    }\n}\n");
+let s = fil.scene();
+s.skybox(0.0, 0.0, 1.0);
+s.camera(45.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0);
+s.add(fil.triangle(), mat);
+s.render_frames(3);
+s.render_png("images/viewtest.png", 800, 600);
+end _lmcode_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok viewtest");

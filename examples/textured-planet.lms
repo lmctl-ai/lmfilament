@@ -1,0 +1,95 @@
+# Textured planet (lmfilament)
+# A UV sphere wrapped in a generated equirectangular Earth map plus a cratered moon, each a sampler2d parameter of a lit Filament material, turning through 36 frames (GIF via ffmpeg). Both textures come from seamless fractal value noise written in the script (continents from a height threshold, polar ice by latitude).
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/textured-planet.lms
+out = ARGV.len() > 0 ? ARGV[0] : "build/textured-planet.dslb";
+mkdir("images");
+mkdir("build");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+fn hash(x: float, y: float) -> float {
+  let s = sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return s - floor(s);
+}
+# value noise that wraps horizontally every per cells, so the planet has no seam
+fn vnoise(x: float, y: float, per: float) -> float {
+  let ix = floor(x);
+  let iy = floor(y);
+  let fx = x - ix;
+  let fy = y - iy;
+  let sx = fx * fx * (3.0 - 2.0 * fx);
+  let sy = fy * fy * (3.0 - 2.0 * fy);
+  let x0 = ix - floor(ix / per) * per;
+  let x1 = ix + 1.0 - floor((ix + 1.0) / per) * per;
+  return lerp(lerp(hash(x0, iy), hash(x1, iy), sx), lerp(hash(x0, iy + 1.0), hash(x1, iy + 1.0), sx), sy);
+}
+fn fbm(x: float, y: float, per: float) -> float {
+  return (vnoise(x, y, per) * 0.5 + vnoise(x * 2.0, y * 2.0, per * 2.0) * 0.25 + vnoise(x * 4.0, y * 4.0, per * 4.0) * 0.125 + vnoise(x * 8.0, y * 8.0, per * 8.0) * 0.0625) / 0.9375;
+}
+let s = fil.scene();
+s.skybox(0.003, 0.003, 0.008);
+let w = 512;
+let h = 256;
+let earth = fil.texture(w, h);
+let moon = fil.texture(256, 128);
+for (y in range(0, h)) {
+  for (x in range(0, w)) {
+    let u = float(x) / float(w);
+    let v = 1.0 - float(y) / float(h);
+    let e = fbm(u * 6.0, v * 3.0, 6.0);
+    let lat = abs(v - 0.5) * 2.0;
+    let r = 0.05;
+    let g = 0.15 + 0.2 * e;
+    let b = 0.35 + 0.5 * e;
+    if (e > 0.48) {
+      let k = clamp((e - 0.48) * 4.0, 0.0, 1.0);
+      r = lerp(0.2, 0.55, k);
+      g = lerp(0.5, 0.42, k);
+      b = lerp(0.18, 0.28, k);
+    }
+    if (lat + 0.12 * fbm(u * 12.0, v * 6.0, 12.0) > 0.88) { r = 0.93; g = 0.95; b = 0.98; }
+    earth.pixel(x, y, r, g, b);
+  }
+}
+for (y in range(0, 128)) {
+  for (x in range(0, 256)) {
+    let u = float(x) / 256.0;
+    let v = 1.0 - float(y) / 128.0;
+    let e = fbm(u * 8.0, v * 4.0, 8.0);
+    let c = 0.35 + 0.5 * e;
+    let crater = vnoise(u * 16.0 + 3.0, v * 8.0, 16.0);
+    if (crater > 0.8) { c = c * 0.65; }
+    moon.pixel(x, y, c, c * 0.98, c * 0.95);
+  }
+}
+let mat = fil.material("texLit", "material {\n    name : TexLit,\n    shadingModel : lit,\n    requires : [\n        uv0\n    ],\n    parameters : [\n        {\n            type : sampler2d,\n            name : albedo\n        },\n        {\n            type : float,\n            name : rough\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor = texture(materialParams_albedo, getUV0());\n        material.roughness = materialParams.rough;\n    }\n}\n");
+mat.set_float("rough", 0.55);
+mat.set_texture("albedo", earth);
+let planet = s.add_part(fil.sphere(1.5, 64), mat).rotate(23.0, 0.0, 0.0);
+mat.set_float("rough", 0.95);
+mat.set_texture("albedo", moon);
+s.add_part(fil.sphere(0.4, 48), mat).translate(2.4, 0.9, 1.6);
+s.directional_light(1.0, 1.0, 1.0, 110000.0, -0.7, -0.35, -0.6);
+s.camera(34.0, 0.0, 1.2, 11.0, 0.4, 0.2, 0.0);
+s.render_frames(1);
+s.render_png("images/textured-planet.png", 720, 480);
+# a full turn of the planet as 36 frames for the GIF
+for (f in range(0, 36)) {
+  planet.rotate(23.0, float(f) * 10.0, 0.0);
+  let name = "build/textured-planet-" + str(f) + ".png";
+  if (f < 10) {
+    name = "build/textured-planet-0" + str(f) + ".png";
+  }
+  s.render_png(name, 360, 240);
+}
+end _lmcode_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok textured-planet");
+if (which("ffmpeg") != null) {
+  g = system ffmpeg -y -loglevel error -framerate 20 -i build/textured-planet-%02d.png -vf "split[a][b];[a]palettegen[p];[b][p]paletteuse" images/textured-planet.gif;
+  assert(g.code == 0);
+  println("wrote images/textured-planet.gif");
+} else {
+  println("ffmpeg not found: skipped images/textured-planet.gif (build/textured-planet-*.png are the frames)");
+}

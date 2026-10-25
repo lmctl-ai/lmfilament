@@ -1,0 +1,38 @@
+# The Cornell box (Cornell University, 1984): a 5.5 m white room with a red left wall, a green right wall, a ceiling lamp and two white blocks
+# (the short one turned -18 degrees, the tall one 3.3 m turned 17 degrees), camera FOV 39.3 degrees as in the original setup.
+# Ported from lmblender examples/cornell-box.lms; this renderer has no indirect light, so the colour bleeding the original shows is only
+# hinted at by the ambient term.
+out = ARGV.len() > 0 ? ARGV[0] : "build/cornell-box.dslb";
+mkdir("images");
+mkdir("build");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("aiDefaultMat", "material {\n    name : AssimpDefaultMat,\n    shadingModel : lit,\n    parameters : [\n        {\n            type : float3,\n            name : baseColor\n        },\n        {\n            type : float,\n            name : metallic\n        },\n        {\n            type : float,\n            name : roughness\n        },\n        {\n            type : float,\n            name : reflectance\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = materialParams.baseColor;\n        material.metallic = materialParams.metallic;\n        material.roughness = materialParams.roughness;\n        material.reflectance = materialParams.reflectance;\n    }\n}\n");
+mat.set_float("metallic", 0.0);
+mat.set_float("roughness", 0.9);
+let s = fil.scene();
+s.skybox(0.0, 0.0, 0.0);
+mat.set_float3("baseColor", 0.725, 0.71, 0.68);
+s.add_at(fil.box(5.7, 0.1, 5.7), mat, 0.0, -0.05, 0.0);
+mat.set_float3("baseColor", 0.725, 0.71, 0.68);
+s.add_at(fil.box(5.7, 0.1, 5.7), mat, 0.0, 5.55, 0.0);
+mat.set_float3("baseColor", 0.725, 0.71, 0.68);
+s.add_at(fil.box(5.7, 5.7, 0.1), mat, 0.0, 2.75, -2.8);
+mat.set_float3("baseColor", 0.63, 0.065, 0.05);
+s.add_at(fil.box(0.1, 5.7, 5.7), mat, -2.8, 2.75, 0.0);
+mat.set_float3("baseColor", 0.14, 0.45, 0.091);
+s.add_at(fil.box(0.1, 5.7, 5.7), mat, 2.8, 2.75, 0.0);
+mat.set_float3("baseColor", 1.0, 0.92, 0.65);
+s.add_at(fil.box(1.3, 0.02, 1.05), mat, 0.0, 5.49, 0.0);
+mat.set_float3("baseColor", 0.725, 0.71, 0.68);
+s.add_part(fil.box(1.65, 1.65, 1.65), mat).translate(0.95, 0.825, 0.75).rotate(0.0, -18.0, 0.0);
+s.add_part(fil.box(1.65, 3.3, 1.65), mat).translate(-0.9, 1.65, -0.75).rotate(0.0, 17.0, 0.0);
+s.directional_light(1.0, 1.0, 1.0, 110000.0, 0.1, -1.0, -0.25);
+s.camera(39.3, 0.0, 2.75, 10.4, 0.0, 2.75, 0.0);
+s.render_frames(2);
+s.render_png("images/cornell-box.png", 640, 640);
+end _lmcode_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok cornell-box");

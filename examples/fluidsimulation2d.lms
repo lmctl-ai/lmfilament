@@ -1,0 +1,51 @@
+# Magnum example "2D Fluid Simulation" (https://magnum.graphics/doc/magnum/examples-fluidsimulation2d.html), reproduced headless as flow visualisation: 40 streamlines of a pair of opposite point vortices (Rankine-style, core 0.22) integrated with midpoint steps in the plane, coloured by speed. The original is an interactive GPU fluid solver.
+out = ARGV.len() > 0 ? ARGV[0] : "build/fluidsimulation2d.dslb";
+mkdir("images");
+mkdir("build");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("aiDefaultMat", "material {\n    name : AssimpDefaultMat,\n    shadingModel : lit,\n    parameters : [\n        {\n            type : float3,\n            name : baseColor\n        },\n        {\n            type : float,\n            name : metallic\n        },\n        {\n            type : float,\n            name : roughness\n        },\n        {\n            type : float,\n            name : reflectance\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = materialParams.baseColor;\n        material.metallic = materialParams.metallic;\n        material.roughness = materialParams.roughness;\n        material.reflectance = materialParams.reflectance;\n    }\n}\n");
+mat.set_float("metallic", 0.0);
+mat.set_float("roughness", 0.8);
+let scn = fil.scene();
+scn.skybox(0.04, 0.045, 0.07);
+let dt = 0.08;
+for (si in range(0, 40)) {
+  let x = -3.5 + float(si - (si / 8) * 8);
+  let y = -2.2 + 1.1 * float(si / 8);
+  for (step in range(0, 90)) {
+    let ax = x - 1.2; let bx = x + 1.2;
+    let r1 = ax * ax + y * y + 0.05;
+    let r2 = bx * bx + y * y + 0.05;
+    let u1 = 2.2 * ((0.0 - y) / r1 + y / r2);
+    let v1 = 2.2 * (ax / r1 - bx / r2);
+    let xm = x + 0.5 * dt * u1; let ym = y + 0.5 * dt * v1;
+    let am = xm - 1.2; let bm = xm + 1.2;
+    let s1 = am * am + ym * ym + 0.05;
+    let s2 = bm * bm + ym * ym + 0.05;
+    let u2 = 2.2 * ((0.0 - ym) / s1 + ym / s2);
+    let v2 = 2.2 * (am / s1 - bm / s2);
+    let nx = x + dt * u2; let ny = y + dt * v2;
+    let speed = sqrt(u2 * u2 + v2 * v2);
+    let t = clamp(speed / 3.0, 0.0, 1.0);
+    let cr = lerp(0.2, 1.0, t);
+    let cg = lerp(0.45, 0.6, t);
+    let cb = lerp(1.0, 0.2, t);
+    if (abs(nx) < 5.0) {
+      if (abs(ny) < 3.2) {
+        mat.set_float3("baseColor", cr, cg, cb);
+        scn.add(fil.tube_between(x, y, 0.0, nx, ny, 0.0, 0.03), mat);
+      }
+    }
+    x = nx; y = ny;
+  }
+}
+scn.directional_light(1.0, 1.0, 1.0, 50000.0, 0.0, 0.0, -1.0);
+scn.camera(36.0, 0.0, 0.0, 9.0, 0.0, 0.0, 0.0);
+scn.render_frames(1);
+scn.render_png("images/fluidsimulation2d.png", 800, 500);
+end _lmcode_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok fluidsimulation2d");

@@ -1,0 +1,21 @@
+# lmfilament port of upstream samples/heightfield.cpp
+# A subdivided-quad stand-in for the heightfield mesh with the heightfield material. The height texture parameter is not in the schema yet.
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/heightfield.lms
+# Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/heightfield.png).
+out = ARGV.len() > 0 ? ARGV[0] : "build/heightfield.dslb";
+mkdir("build");
+mkdir("build/materials");
+mkdir("images");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("heightfield", "material {\n    name : Heightfield,\n    parameters : [\n        {\n            type : sampler2d,\n            name : height\n        }\n    ],\n    requires : [\n        uv0\n    ],\n    variables : [\n        color\n    ],\n    shadingModel : unlit,\n    doubleSided : true,\n}\n\nvertex {\n    void materialVertex(inout MaterialVertexInputs material) {\n        float height = texture(materialParams_height, material.uv0).r;\n        material.worldPosition.y = height - getWorldOffset().y;\n        material.color.r = height;\n    }\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = vec3(variable_color.r);\n    }\n}\n");
+let s = fil.scene();
+s.add(fil.plane(2.0, 2.0), mat);
+s.camera(45.0, 0.0, 1.5, 2.5, 0.0, 0.0, 0.0);
+s.render_frames(1);
+s.render_png("images/heightfield.png", 800, 600);
+end _lmcode_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok heightfield");

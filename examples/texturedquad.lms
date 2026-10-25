@@ -1,0 +1,24 @@
+# lmfilament port of upstream samples/texturedquad.cpp
+# A quad with the bakedTexture material and upstream's Moss_01 colour image as its albedo sampler.
+# (reads third_party/filament/third_party/textures/Moss_01/Moss_01_Color.png: run from a clone after scripts/sync-filament.sh)
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texturedquad.lms
+# Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/texturedquad.png).
+out = ARGV.len() > 0 ? ARGV[0] : "build/texturedquad.dslb";
+mkdir("build");
+mkdir("build/materials");
+mkdir("images");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("bakedTexture", "material {\n    name : BakedTexture,\n    parameters : [\n        {\n            type : sampler2d,\n            name : albedo\n        }\n    ],\n    requires : [\n        uv0\n    ],\n    shadingModel : unlit,\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = texture(materialParams_albedo, getUV0()).rgb;\n    }\n}\n");
+mat.set_texture("albedo", fil.texture_file("third_party/filament/third_party/textures/Moss_01/Moss_01_Color.png"));
+let s = fil.scene();
+s.skybox(0.1, 0.125, 0.25);
+s.add_part(fil.plane(2.0, 2.0), mat).rotate(90.0, 0.0, 0.0);
+s.camera(45.0, 0.0, 0.0, 2.2, 0.0, 0.0, 0.0);
+s.render_frames(1);
+s.render_png("images/texturedquad.png", 800, 600);
+end _lmcode_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok texturedquad");

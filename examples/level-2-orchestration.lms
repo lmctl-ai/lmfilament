@@ -1,0 +1,112 @@
+# Level 2: orchestration: one of the four 10 s clips (240 frames at 24 fps) on https://lmctl.com, from lmctl-ai/lmctl scripts/homepage/video.
+# Provider-coloured agents orbit the Lead; message packets travel member to Lead and onward.
+# Writes images/level-2-orchestration.png (frame 150), images/level-2-orchestration.mp4 and images/level-2-orchestration.gif (the last two need ffmpeg) and build/level-2-orchestration/frame-N.png.
+out = ARGV.len() > 0 ? ARGV[0] : "build/level-2-orchestration.dslb";
+mkdir("images");
+mkdir("build");
+mkdir("build/level-2-orchestration");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("aiDefaultMat", "material {\n    name : AssimpDefaultMat,\n    shadingModel : lit,\n    parameters : [\n        {\n            type : float3,\n            name : baseColor\n        },\n        {\n            type : float,\n            name : metallic\n        },\n        {\n            type : float,\n            name : roughness\n        },\n        {\n            type : float,\n            name : reflectance\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = materialParams.baseColor;\n        material.metallic = materialParams.metallic;\n        material.roughness = materialParams.roughness;\n        material.reflectance = materialParams.reflectance;\n    }\n}\n");
+mat.set_float("metallic", 0.0);
+mat.set_float("roughness", 0.45);
+let scn = fil.scene();
+let frame_count = 240;
+let render_width = 480;
+let render_height = 270;
+let message_period = 80;
+
+# Shared look block: keep identical in all four homepage storyboards.
+scn.skybox(0.00271, 0.00440, 0.01002);
+scn.directional_light(1.0, 1.0, 1.0, 90200.0, -0.55, -1.0, -0.45);
+
+# Provider-colored agents orbit the gold Lead; no words are modeled in 3D.
+mat.set_float3("baseColor", 0.98, 0.68, 0.20);
+let lead = scn.add_part(fil.sphere(0.88, 32), mat).translate(0.0, 0.0, 0.0);
+mat.set_float3("baseColor", 0.98, 0.68, 0.20);
+let lead_flash = scn.add_part(fil.sphere(1.05, 32), mat).translate(0.0, 0.0, 0.0).visible(false);
+mat.set_float3("baseColor", 0.18, 0.60, 0.94);
+let a0 = scn.add_part(fil.sphere(0.62, 32), mat).translate(-5.2, 0.0, 0.0);
+mat.set_float3("baseColor", 0.14, 0.78, 0.68);
+let a1 = scn.add_part(fil.sphere(0.62, 32), mat).translate(-2.6, 3.3, 0.0);
+mat.set_float3("baseColor", 0.62, 0.45, 0.94);
+let a2 = scn.add_part(fil.sphere(0.62, 32), mat).translate(2.6, 3.3, 0.0);
+mat.set_float3("baseColor", 0.96, 0.38, 0.28);
+let a3 = scn.add_part(fil.sphere(0.62, 32), mat).translate(5.2, 0.0, 0.0);
+mat.set_float3("baseColor", 0.18, 0.60, 0.94);
+let a4 = scn.add_part(fil.sphere(0.62, 32), mat).translate(2.6, -3.3, 0.0);
+mat.set_float3("baseColor", 0.14, 0.78, 0.68);
+let a5 = scn.add_part(fil.sphere(0.62, 32), mat).translate(-2.6, -3.3, 0.0);
+
+# Thin spokes show the Lead as the team's message relay.
+mat.set_float3("baseColor", 0.18, 0.60, 0.94);
+let spoke0 = scn.add_part(fil.box(4.4, 0.08, 0.12), mat).translate(-2.9, 0.0, -0.65);
+mat.set_float3("baseColor", 0.14, 0.78, 0.68);
+let spoke1 = scn.add_part(fil.box(3.5, 0.08, 0.12), mat).translate(-1.35, 1.7, -0.65).rotate(0.00, 0.00, -37.24);
+mat.set_float3("baseColor", 0.62, 0.45, 0.94);
+let spoke2 = scn.add_part(fil.box(3.5, 0.08, 0.12), mat).translate(1.35, 1.7, -0.65).rotate(0.00, 0.00, 37.24);
+mat.set_float3("baseColor", 0.96, 0.38, 0.28);
+let spoke3 = scn.add_part(fil.box(4.4, 0.08, 0.12), mat).translate(2.9, 0.0, -0.65);
+mat.set_float3("baseColor", 0.18, 0.60, 0.94);
+let spoke4 = scn.add_part(fil.box(3.5, 0.08, 0.12), mat).translate(1.35, -1.7, -0.65).rotate(0.00, 0.00, -37.24);
+mat.set_float3("baseColor", 0.14, 0.78, 0.68);
+let spoke5 = scn.add_part(fil.box(3.5, 0.08, 0.12), mat).translate(-1.35, -1.7, -0.65).rotate(0.00, 0.00, 37.24);
+
+# Small gold particles travel from one member to the Lead and then onward.
+mat.set_float3("baseColor", 1.0, 0.94, 0.72);
+let m0 = scn.add_part(fil.sphere(0.28, 32), mat);
+mat.set_float3("baseColor", 1.0, 0.94, 0.72);
+let m1 = scn.add_part(fil.sphere(0.28, 32), mat);
+mat.set_float3("baseColor", 1.0, 0.94, 0.72);
+let m2 = scn.add_part(fil.sphere(0.28, 32), mat);
+let fov = 42.0;
+scn.camera(fov, 0.0, 0.0, 16.0, 0.0, 0.0, 0.0);
+for (frame in range(0, frame_count)) {
+  let cycle0 = float(frame % message_period) / float(message_period - 1);
+  let cycle1 = float((frame + 27) % message_period) / float(message_period - 1);
+  let cycle2 = float((frame + 53) % message_period) / float(message_period - 1);
+  let pulse0 = cycle0 > 0.42 && cycle0 < 0.58;
+  let pulse1 = cycle1 > 0.42 && cycle1 < 0.58;
+  let pulse2 = cycle2 > 0.42 && cycle2 < 0.58;
+  let lead_pulse = pulse0 || pulse1 || pulse2;
+  lead.visible(!lead_pulse);
+  lead_flash.visible(lead_pulse);
+  if (cycle0 < 0.5) {
+    let u = ease(cycle0 * 2.0);
+    m0.translate(lerp(-5.2, 0.0, u), 0.0, 0.9);
+  } else {
+    let u = ease((cycle0 - 0.5) * 2.0);
+    m0.translate(lerp(0.0, 5.2, u), 0.0, 0.9);
+  }
+  if (cycle1 < 0.5) {
+    let u = ease(cycle1 * 2.0);
+    m1.translate(lerp(-2.6, 0.0, u), lerp(3.3, 0.0, u), 1.0);
+  } else {
+    let u = ease((cycle1 - 0.5) * 2.0);
+    m1.translate(lerp(0.0, 2.6, u), lerp(0.0, -3.3, u), 1.0);
+  }
+  if (cycle2 < 0.5) {
+    let u = ease(cycle2 * 2.0);
+    m2.translate(lerp(5.2, 0.0, u), 0.0, 1.1);
+  } else {
+    let u = ease((cycle2 - 0.5) * 2.0);
+    m2.translate(lerp(0.0, -2.6, u), lerp(0.0, 3.3, u), 1.1);
+  }
+  scn.render_png("build/level-2-orchestration/frame-" + str(frame) + ".png", render_width, render_height);
+  if (frame == 150) { scn.render_png("images/level-2-orchestration.png", render_width, render_height); }
+}
+end _lmcode_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok level-2-orchestration");
+if (which("ffmpeg") != null) {
+  a = system ffmpeg -y -loglevel error -framerate 24 -i build/level-2-orchestration/frame-%d.png -c:v libx264 -pix_fmt yuv420p -crf 22 images/level-2-orchestration.mp4;
+  assert(a.code == 0);
+  b = system ffmpeg -y -loglevel error -framerate 24 -i build/level-2-orchestration/frame-%d.png -vf "fps=12,scale=480:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse=dither=none" -loop 0 images/level-2-orchestration.gif;
+  assert(b.code == 0);
+  println("wrote images/level-2-orchestration.mp4 and images/level-2-orchestration.gif");
+} else {
+  println("ffmpeg not found: skipped the MP4 and GIF (build/level-2-orchestration/frame-*.png are the 240 frames)");
+}

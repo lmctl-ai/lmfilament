@@ -1,0 +1,19 @@
+# lmfilament port of upstream samples/point_sprites.cpp
+# Compiles the pointSprites material used by the sample. Point primitives and the fade texture are not in the schema yet, so the scene holds only the skybox.
+# Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/point_sprites.lms
+# Filament runs on its noop backend here, so the scene is built and "rendered" without pixels.
+out = ARGV.len() > 0 ? ARGV[0] : "build/point_sprites.dslb";
+mkdir("build");
+mkdir("build/materials");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("pointSprites", "material {\n    name : PointSprites,\n    requires : [\n        custom0,\n        color\n    ],\n    shadingModel : unlit,\n    blending : add,\n    parameters : [\n        {\n            type : sampler2d,\n            name : fade\n        }\n    ]\n}\n\nvertex {\n    void materialVertex(inout MaterialVertexInputs material) {\n        gl_PointSize = getCustom0().r;\n    }\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        float L = texture(materialParams_fade, gl_PointCoord).r;\n        material.baseColor = getColor() * vec4(L, L, L, 1);\n    }\n}\n");
+mat.save("build/pointSprites.filamat");
+let s = fil.scene();
+s.skybox(0.1, 0.125, 0.25);
+s.render_frames(1);
+end _lmcode_
+savedsl(p, out);
+r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok point_sprites");

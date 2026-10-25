@@ -1,0 +1,158 @@
+# Level 1: session management: one of the four 10 s clips (240 frames at 24 fps) on https://lmctl.com, from lmctl-ai/lmctl scripts/homepage/video.
+# Anonymous sessions gather into named Lead, Coder and Review team rows; a lens peeks at one session and a usage gauge rises.
+# Writes images/level-1-sessions.png (frame 150), images/level-1-sessions.mp4 and images/level-1-sessions.gif (the last two need ffmpeg) and build/level-1-sessions/frame-N.png.
+out = ARGV.len() > 0 ? ARGV[0] : "build/level-1-sessions.dslb";
+mkdir("images");
+mkdir("build");
+mkdir("build/level-1-sessions");
+p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
+let mat = fil.material("aiDefaultMat", "material {\n    name : AssimpDefaultMat,\n    shadingModel : lit,\n    parameters : [\n        {\n            type : float3,\n            name : baseColor\n        },\n        {\n            type : float,\n            name : metallic\n        },\n        {\n            type : float,\n            name : roughness\n        },\n        {\n            type : float,\n            name : reflectance\n        }\n    ],\n}\n\nfragment {\n    void material(inout MaterialInputs material) {\n        prepareMaterial(material);\n        material.baseColor.rgb = materialParams.baseColor;\n        material.metallic = materialParams.metallic;\n        material.roughness = materialParams.roughness;\n        material.reflectance = materialParams.reflectance;\n    }\n}\n");
+mat.set_float("metallic", 0.0);
+mat.set_float("roughness", 0.45);
+let scn = fil.scene();
+let frame_count = 240;
+let render_width = 480;
+let render_height = 270;
+
+# Shared look block: keep identical in all four homepage storyboards.
+scn.skybox(0.00271, 0.00440, 0.01002);
+scn.directional_light(1.0, 1.0, 1.0, 90200.0, -0.55, -1.0, -0.45);
+
+# Color bands stand in for named teams without text in the scene.
+mat.set_float3("baseColor", 0.18, 0.78, 0.68);
+scn.add_part(fil.box(4.8, 0.08, 0.12), mat).translate(-4.6, 2.55, -0.8);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+scn.add_part(fil.box(4.8, 0.08, 0.12), mat).translate(-4.6, 0.0, -0.8);
+mat.set_float3("baseColor", 0.61, 0.47, 0.92);
+scn.add_part(fil.box(4.8, 0.08, 0.12), mat).translate(-4.6, -2.55, -0.8);
+
+# Anonymous session orbs begin apart, then settle into team rows.
+mat.set_float3("baseColor", 0.18, 0.78, 0.68);
+let s0 = scn.add_part(fil.sphere(0.42, 32), mat).translate(-9.0, 3.8, 0.0);
+mat.set_float3("baseColor", 0.18, 0.78, 0.68);
+let s1 = scn.add_part(fil.sphere(0.42, 32), mat).translate(-3.8, -3.4, 0.0);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let s2 = scn.add_part(fil.sphere(0.42, 32), mat).translate(-7.0, -0.7, 0.0);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let s3 = scn.add_part(fil.sphere(0.42, 32), mat).translate(-1.4, 3.3, 0.0);
+mat.set_float3("baseColor", 0.61, 0.47, 0.92);
+let s4 = scn.add_part(fil.sphere(0.42, 32), mat).translate(-9.0, -3.8, 0.0);
+mat.set_float3("baseColor", 0.61, 0.47, 0.92);
+let s5 = scn.add_part(fil.sphere(0.42, 32), mat).translate(-2.8, 0.8, 0.0);
+
+# A gold lens is drawn as eight small spheres around one session.
+mat.set_float3("baseColor", 0.18, 0.78, 0.68);
+let peek = scn.add_part(fil.sphere(0.68, 32), mat).translate(-5.4, 2.55, 0.1).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let l0 = scn.add_part(fil.box(0.75, 0.14, 0.10), mat).rotate(0.00, 0.00, 90.00).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let l1 = scn.add_part(fil.box(0.75, 0.14, 0.10), mat).rotate(0.00, 0.00, 135.00).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let l2 = scn.add_part(fil.box(0.75, 0.14, 0.10), mat).rotate(0.00, 0.00, 180.00).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let l3 = scn.add_part(fil.box(0.75, 0.14, 0.10), mat).rotate(0.00, 0.00, -135.00).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let l4 = scn.add_part(fil.box(0.75, 0.14, 0.10), mat).rotate(0.00, 0.00, -90.00).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let l5 = scn.add_part(fil.box(0.75, 0.14, 0.10), mat).rotate(0.00, 0.00, -45.00).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let l6 = scn.add_part(fil.box(0.75, 0.14, 0.10), mat).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let l7 = scn.add_part(fil.box(0.75, 0.14, 0.10), mat).rotate(0.00, 0.00, 45.00).visible(false);
+
+# The usage gauge rises at the end of the story.
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g00 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(3.7, -1.50, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g01 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(3.7, -0.90, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g02 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(3.7, -0.30, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g03 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(3.7, 0.30, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g10 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(4.6, -1.50, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g11 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(4.6, -0.90, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g12 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(4.6, -0.30, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g13 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(4.6, 0.30, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g20 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(5.5, -1.50, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g21 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(5.5, -0.90, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g22 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(5.5, -0.30, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g23 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(5.5, 0.30, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g30 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(6.4, -1.50, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g31 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(6.4, -0.90, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g32 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(6.4, -0.30, 0.0).visible(false);
+mat.set_float3("baseColor", 0.96, 0.66, 0.20);
+let g33 = scn.add_part(fil.box(0.38, 0.56, 0.22), mat).translate(6.4, 0.30, 0.0).visible(false);
+
+let fov = 43.0;
+scn.camera(fov, 0.0, 0.0, 16.5, 0.0, 0.0, 0.0);
+for (frame in range(0, frame_count)) {
+  let t = float(frame) / float(frame_count - 1);
+  let group_t = ease(clamp(t / 0.42, 0.0, 1.0));
+  s0.translate(lerp(-9.0, -5.4, group_t), lerp(3.8, 2.55, group_t), 0.0);
+  s1.translate(lerp(-3.8, -3.8, group_t), lerp(-3.4, 2.55, group_t), 0.0);
+  s2.translate(lerp(-7.0, -5.4, group_t), lerp(-0.7, 0.0, group_t), 0.0);
+  s3.translate(lerp(-1.4, -3.8, group_t), lerp(3.3, 0.0, group_t), 0.0);
+  s4.translate(lerp(-9.0, -5.4, group_t), lerp(-3.8, -2.55, group_t), 0.0);
+  s5.translate(lerp(-2.8, -3.8, group_t), lerp(0.8, -2.55, group_t), 0.0);
+
+  let lens_t = ease(clamp((t - 0.42) / 0.28, 0.0, 1.0));
+  let radius = 0.86 + 0.14 * lens_t;
+  let lens_visible = t > 0.42 && t < 0.70;
+  s0.visible(!lens_visible);
+  peek.visible(lens_visible);
+  l0.visible(lens_visible); l1.visible(lens_visible); l2.visible(lens_visible); l3.visible(lens_visible);
+  l4.visible(lens_visible); l5.visible(lens_visible); l6.visible(lens_visible); l7.visible(lens_visible);
+  l0.visible(lens_visible); l1.visible(lens_visible); l2.visible(lens_visible); l3.visible(lens_visible);
+  l4.visible(lens_visible); l5.visible(lens_visible); l6.visible(lens_visible); l7.visible(lens_visible);
+  l0.translate(-5.4 + radius, 2.55, 0.35);
+  l1.translate(-5.4 + 0.707 * radius, 2.55 + 0.707 * radius, 0.35);
+  l2.translate(-5.4, 2.55 + radius, 0.35);
+  l3.translate(-5.4 - 0.707 * radius, 2.55 + 0.707 * radius, 0.35);
+  l4.translate(-5.4 - radius, 2.55, 0.35);
+  l5.translate(-5.4 - 0.707 * radius, 2.55 - 0.707 * radius, 0.35);
+  l6.translate(-5.4, 2.55 - radius, 0.35);
+  l7.translate(-5.4 + 0.707 * radius, 2.55 - 0.707 * radius, 0.35);
+
+  let usage_t = ease(clamp((t - 0.55) / 0.35, 0.0, 1.0));
+  g00.visible(usage_t > 0.05); g01.visible(usage_t > 0.28); g02.visible(usage_t > 0.55); g03.visible(usage_t > 0.82);
+  g10.visible(usage_t > 0.05); g11.visible(usage_t > 0.42); g12.visible(usage_t > 0.78);
+  g20.visible(usage_t > 0.05); g21.visible(usage_t > 0.20); g22.visible(usage_t > 0.42); g23.visible(usage_t > 0.70);
+  g30.visible(usage_t > 0.05); g31.visible(usage_t > 0.33); g32.visible(usage_t > 0.60); g33.visible(usage_t > 0.90);
+
+  if (t > 0.42 && t < 0.70) {
+    let zoom = ease((t - 0.42) / 0.28);
+    let distance = lerp(16.5, 12.0, zoom);
+    scn.camera(fov, 0.0, 0.0, distance, -5.4, 2.55, 0.0);
+  } else {
+    scn.camera(fov, 0.0, 0.0, 16.5, 0.0, 0.0, 0.0);
+  }
+  scn.render_png("build/level-1-sessions/frame-" + str(frame) + ".png", render_width, render_height);
+  if (frame == 150) { scn.render_png("images/level-1-sessions.png", render_width, render_height); }
+}
+end _lmcode_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+println("ok level-1-sessions");
+if (which("ffmpeg") != null) {
+  a = system ffmpeg -y -loglevel error -framerate 24 -i build/level-1-sessions/frame-%d.png -c:v libx264 -pix_fmt yuv420p -crf 22 images/level-1-sessions.mp4;
+  assert(a.code == 0);
+  b = system ffmpeg -y -loglevel error -framerate 24 -i build/level-1-sessions/frame-%d.png -vf "fps=12,scale=480:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse=dither=none" -loop 0 images/level-1-sessions.gif;
+  assert(b.code == 0);
+  println("wrote images/level-1-sessions.mp4 and images/level-1-sessions.gif");
+} else {
+  println("ffmpeg not found: skipped the MP4 and GIF (build/level-1-sessions/frame-*.png are the 240 frames)");
+}
