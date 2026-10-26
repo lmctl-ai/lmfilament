@@ -128,8 +128,10 @@ private implementation detail              # private implementation detail
 
 ## Downloads
 
-Release binaries for Linux (x64, arm64) and macOS (arm64, x64) are on the
-[releases page](https://github.com/lmctl-ai/lmfilament/releases). Windows is not supported yet.
+The current release lane publishes Linux x64 and arm64 binaries (glibc >= 2.35)
+on the [releases page](https://github.com/lmctl-ai/lmfilament/releases). Earlier
+releases may contain macOS assets; macOS and Windows are not produced by the
+current lane.
 
 ## License
 
