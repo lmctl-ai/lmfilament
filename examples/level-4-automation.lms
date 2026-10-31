@@ -123,7 +123,7 @@ for (frame in range(0, frame_count)) {
 end _lmcode_
 savedsl(p, out);
 # run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
-r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);
+r = system(concat(dsl_cli(p), ["--lmcode", out]), 3000000);
 if (r.code != 0) { println(r.stderr + r.stdout); }
 assert(r.code == 0);
 println("ok level-4-automation");

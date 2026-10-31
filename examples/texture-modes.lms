@@ -54,7 +54,7 @@ s.render_frames(1);
 s.render_png("images/texture-modes.png", 640, 400);
 end _lmcode_
 savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--dsl", out]), 900000);
+r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
 if (r.code != 0) { println(r.stderr + r.stdout); }
 assert(r.code == 0);
 println("ok texture-modes");
