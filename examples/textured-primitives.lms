@@ -1,7 +1,6 @@
 # Textured primitives (lmfilament)
 # One procedural brick texture on every primitive the host builds (box, sphere, cylinder, cone, capsule, tube, ring) and a checker floor, with a shadow map. The same lit material takes a different sampler2d image between `Scene.add` calls; the image is uploaded to Filament when the part is added.
 # Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/textured-primitives.lms
-out = ARGV.len() > 0 ? ARGV[0] : "build/textured-primitives.dslb";
 mkdir("images");
 mkdir("build");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -45,8 +44,7 @@ s.camera(36.0, 0.0, 3.2, 8.6, 0.0, -0.2, 0.0);
 s.render_frames(1);
 s.render_png("images/textured-primitives.png", 800, 450);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok textured-primitives");

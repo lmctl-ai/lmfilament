@@ -2,7 +2,6 @@
 # One vertex-colored triangle (the upstream vertex/color constants) with the unlit bakedColor material on a dark blue skybox.
 # Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/hellotriangle.lms
 # Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/hellotriangle.png).
-out = ARGV.len() > 0 ? ARGV[0] : "build/hellotriangle.dslb";
 mkdir("build");
 mkdir("build/materials");
 mkdir("images");
@@ -15,8 +14,7 @@ s.add(fil.triangle(), mat);
 s.render_frames(2);
 s.render_png("images/hellotriangle.png", 800, 600);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok hellotriangle");

@@ -2,7 +2,6 @@
 # 0.338 nm rise, phosphate backbone at radius 0.89 nm. The two backbones sit 144 degrees apart around the axis rather than 180,
 # which opens a wide major groove and a narrow minor groove. 28 base pairs, axis along x.
 # Base colours: A green, T red, G yellow, C blue. Ported from lmblender examples/dna-double-helix.lms.
-out = ARGV.len() > 0 ? ARGV[0] : "build/dna-double-helix.dslb";
 mkdir("images");
 mkdir("build");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -68,8 +67,7 @@ scn.camera(31.0, 0.0, 6.2, 11.0, 0.0, 1.35, 0.0);
 scn.render_frames(2);
 scn.render_png("images/dna-double-helix.png", 900, 500);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok dna-double-helix");

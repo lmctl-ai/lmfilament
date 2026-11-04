@@ -1,6 +1,5 @@
 # A water molecule with its real 104.5 degree H-O-H angle (bond lengths are stretched for legibility).
 # Ported from lmcad examples/ball-stick.lms.
-out = ARGV.len() > 0 ? ARGV[0] : "build/ball-stick.dslb";
 mkdir("images");
 mkdir("build");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -22,8 +21,7 @@ s.camera(38.0, 0.0, 6.0, 4.0, 0.0, 0.0, 0.4);
 s.render_frames(2);
 s.render_png("images/ball-stick.png", 640, 480);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok ball-stick");

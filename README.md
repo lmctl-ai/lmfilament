@@ -4,7 +4,7 @@
 
 **Drive [Google Filament](https://github.com/google/filament) from LMScript with one static executable.**
 
-lmfilament is a native host for the lmscript `_dsl_` statement. It embeds Filament 1.78.1 (material compiler,
+lmfilament is a native host for the lmscript `_lmcode_` statement. It embeds Filament 1.78.1 (material compiler,
 engine, geometry tools) and exposes it through `private implementation detail`,
 the same way [lmhtml](https://github.com/lmctl-ai/lmhtml) and [lmcad](https://github.com/lmctl-ai/lmcad) do.
 The binary has no runtime dependency.

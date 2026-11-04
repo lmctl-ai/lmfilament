@@ -1,5 +1,4 @@
 # Magnum example "3D Fluid Simulation" (https://magnum.graphics/doc/magnum/examples-fluidsimulation3d.html), reproduced headless as flow visualisation: Magnum's example runs a particle fluid on the GPU; there is no simulator or arrays here, so this integrates 32 streamlines of the ABC (Arnold-Beltrami-Childress) flow with midpoint steps, drawn as tube chains coloured by speed (blue slow, orange fast).
-out = ARGV.len() > 0 ? ARGV[0] : "build/fluidsimulation3d.dslb";
 mkdir("images");
 mkdir("build");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -49,8 +48,7 @@ scn.camera(34.0, 10.0, 9.0, 13.0, 0.0, 0.0, 0.0);
 scn.render_frames(1);
 scn.render_png("images/fluidsimulation3d.png", 800, 600);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok fluidsimulation3d");

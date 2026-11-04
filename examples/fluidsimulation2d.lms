@@ -1,5 +1,4 @@
 # Magnum example "2D Fluid Simulation" (https://magnum.graphics/doc/magnum/examples-fluidsimulation2d.html), reproduced headless as flow visualisation: 40 streamlines of a pair of opposite point vortices (Rankine-style, core 0.22) integrated with midpoint steps in the plane, coloured by speed. The original is an interactive GPU fluid solver.
-out = ARGV.len() > 0 ? ARGV[0] : "build/fluidsimulation2d.dslb";
 mkdir("images");
 mkdir("build");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -44,8 +43,7 @@ scn.camera(36.0, 0.0, 0.0, 9.0, 0.0, 0.0, 0.0);
 scn.render_frames(1);
 scn.render_png("images/fluidsimulation2d.png", 800, 500);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok fluidsimulation2d");

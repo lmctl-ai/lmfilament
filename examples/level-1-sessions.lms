@@ -1,7 +1,6 @@
 # Level 1: session management: one of the four 10 s clips (240 frames at 24 fps) on https://lmctl.com, from lmctl-ai/lmctl scripts/homepage/video.
 # Anonymous sessions gather into named Lead, Coder and Review team rows; a lens peeks at one session and a usage gauge rises.
 # Writes images/level-1-sessions.png (frame 150), images/level-1-sessions.mp4 and images/level-1-sessions.gif (the last two need ffmpeg) and build/level-1-sessions/frame-N.png.
-out = ARGV.len() > 0 ? ARGV[0] : "build/level-1-sessions.dslb";
 mkdir("images");
 mkdir("build");
 mkdir("build/level-1-sessions");
@@ -141,11 +140,10 @@ for (frame in range(0, frame_count)) {
   if (frame == 150) { scn.render_png("images/level-1-sessions.png", render_width, render_height); }
 }
 end _lmcode_
-savedsl(p, out);
 # run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 3000000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok level-1-sessions");
 if (which("ffmpeg") != null) {
   a = system ffmpeg -y -loglevel error -framerate 24 -i build/level-1-sessions/frame-%d.png -c:v libx264 -pix_fmt yuv420p -crf 22 images/level-1-sessions.mp4;

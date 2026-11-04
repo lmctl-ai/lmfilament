@@ -2,7 +2,6 @@
 # Ring edges: C ring 1.239-1.527, B ring 1.527-1.951, Cassini Division 1.951-2.027, A ring 2.027-2.269 with the Encke gap at 2.214.
 # We look from 16 degrees above the ring plane; the Sun is 17 degrees above it on the left. Ported from lmblender examples/saturn-rings.lms
 # (no planet shadow on the rings here: the renderer casts no shadows).
-out = ARGV.len() > 0 ? ARGV[0] : "build/saturn-rings.dslb";
 mkdir("images");
 mkdir("build");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -26,8 +25,7 @@ s.camera(25.0, -1.6, 2.6, 9.0, 0.0, -0.1, 0.0);
 s.render_frames(2);
 s.render_png("images/saturn-rings.png", 900, 560);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok saturn-rings");

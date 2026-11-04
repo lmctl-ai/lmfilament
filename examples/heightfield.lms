@@ -2,7 +2,6 @@
 # A subdivided-quad stand-in for the heightfield mesh with the heightfield material. The height texture parameter is not in the schema yet.
 # Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/heightfield.lms
 # Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/heightfield.png).
-out = ARGV.len() > 0 ? ARGV[0] : "build/heightfield.dslb";
 mkdir("build");
 mkdir("build/materials");
 mkdir("images");
@@ -14,8 +13,7 @@ s.camera(45.0, 0.0, 1.5, 2.5, 0.0, 0.0, 0.0);
 s.render_frames(1);
 s.render_png("images/heightfield.png", 800, 600);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok heightfield");

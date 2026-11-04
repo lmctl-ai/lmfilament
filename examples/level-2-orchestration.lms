@@ -1,7 +1,6 @@
 # Level 2: orchestration: one of the four 10 s clips (240 frames at 24 fps) on https://lmctl.com, from lmctl-ai/lmctl scripts/homepage/video.
 # Provider-coloured agents orbit the Lead; message packets travel member to Lead and onward.
 # Writes images/level-2-orchestration.png (frame 150), images/level-2-orchestration.mp4 and images/level-2-orchestration.gif (the last two need ffmpeg) and build/level-2-orchestration/frame-N.png.
-out = ARGV.len() > 0 ? ARGV[0] : "build/level-2-orchestration.dslb";
 mkdir("images");
 mkdir("build");
 mkdir("build/level-2-orchestration");
@@ -95,11 +94,10 @@ for (frame in range(0, frame_count)) {
   if (frame == 150) { scn.render_png("images/level-2-orchestration.png", render_width, render_height); }
 }
 end _lmcode_
-savedsl(p, out);
 # run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 3000000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok level-2-orchestration");
 if (which("ffmpeg") != null) {
   a = system ffmpeg -y -loglevel error -framerate 24 -i build/level-2-orchestration/frame-%d.png -c:v libx264 -pix_fmt yuv420p -crf 22 images/level-2-orchestration.mp4;

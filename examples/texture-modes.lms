@@ -1,7 +1,6 @@
 # Texture filtering and wrapping (lmfilament)
 # One 8x8 pixel-art texture on quads: the top row magnifies it with linear (smooth) and nearest (crisp) filtering, then shows a checker at a grazing angle (trilinear mips); the bottom row repeats the UVs 2.5 times with wrap "repeat", "clamp" (edge pixels stretch) and "mirror". Textures are uploaded to Filament (noop backend) as sampler2d parameters; the picture comes from lmfilament's CPU preview rasterizer.
 # Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/texture-modes.lms
-out = ARGV.len() > 0 ? ARGV[0] : "build/texture-modes.dslb";
 mkdir("images");
 mkdir("build");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -53,8 +52,7 @@ s.camera(40.0, 0.0, 0.0, 9.0, 0.0, 0.0, 0.0);
 s.render_frames(1);
 s.render_png("images/texture-modes.png", 640, 400);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok texture-modes");

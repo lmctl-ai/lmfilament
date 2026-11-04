@@ -2,7 +2,6 @@
 # Two lines of voxel text (`fil.text`) from a built-in 5x7 font; Magnum renders distance-field glyphs from a font file, which a static binary without a font stack cannot do.
 # Run anywhere: lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmfilament/main/examples/text.lms
 # Filament runs on its noop backend; the picture comes from lmfilament's CPU preview rasterizer (images/text.png).
-out = ARGV.len() > 0 ? ARGV[0] : "build/text.dslb";
 mkdir("build");
 mkdir("images");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -20,8 +19,7 @@ s.camera(38.0, 0.0, 0.8, 13.0, 0.0, 0.2, 0.0);
 s.render_frames(2);
 s.render_png("images/text.png", 800, 400);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok text");

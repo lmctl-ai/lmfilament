@@ -2,7 +2,6 @@
 # (the short one turned -18 degrees, the tall one 3.3 m turned 17 degrees), camera FOV 39.3 degrees as in the original setup.
 # Ported from lmblender examples/cornell-box.lms; this renderer has no indirect light, so the colour bleeding the original shows is only
 # hinted at by the ambient term.
-out = ARGV.len() > 0 ? ARGV[0] : "build/cornell-box.dslb";
 mkdir("images");
 mkdir("build");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -31,8 +30,7 @@ s.camera(39.3, 0.0, 2.75, 10.4, 0.0, 2.75, 0.0);
 s.render_frames(2);
 s.render_png("images/cornell-box.png", 640, 640);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok cornell-box");

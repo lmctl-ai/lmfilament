@@ -1,7 +1,6 @@
 # Caffeine (1,3,7-trimethylxanthine, C8H10N4O2) as a ball-and-stick model in CPK colours: grey carbon, blue nitrogen, red oxygen, white hydrogen.
 # 24 atoms and 29 stick segments (a double bond is two), coordinates copied from the lmblender example caffeine-molecule (one scene unit is one angstrom).
 # Ported from lmblender examples/caffeine-molecule.lms.
-out = ARGV.len() > 0 ? ARGV[0] : "build/caffeine-molecule.dslb";
 mkdir("images");
 mkdir("build");
 p = _lmcode_ cli="lmfilament" install="github:lmctl-ai/lmfilament@latest";
@@ -73,8 +72,7 @@ s.camera(40.0, 0.6, 9.0, 9.5, 0.3, 1.8, 0.2);
 s.render_frames(2);
 s.render_png("images/caffeine-molecule.png", 900, 600);
 end _lmcode_
-savedsl(p, out);
-r = system(concat(dsl_cli(p), ["--lmcode", out]), 900000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+r = run_lmcode(p);
+if (!r.ok) { println(r.stderr + r.stdout); }
+assert(r.ok);
 println("ok caffeine-molecule");
